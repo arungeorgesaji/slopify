@@ -1,0 +1,12 @@
+[Unit]
+Description=Prompt builder for slopify
+After=network.target
+
+[Service]
+WorkingDirectory=%h/slopify/prompt
+ExecStart=%h/slopify/prompt/venv/bin/uvicorn app.main:app --reload
+Restart=on-failure
+Environment="PATH=%h/slopify/prompt/venv/bin:/usr/bin"
+
+[Install]
+WantedBy=default.target
