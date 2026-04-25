@@ -28,6 +28,40 @@ class SongGenerateRequest(BaseModel):
         return self
 
 
+class EnhancePromptRequest(BaseModel):
+    prompt: str = Field(
+        ...,
+        min_length=1,
+        description="Raw user idea for a music generation prompt.",
+    )
+    model: str = Field(
+        default="gpt-5.4-mini",
+        description="OpenAI model used for prompt enhancement.",
+    )
+
+
+class EnhancePromptResponse(BaseModel):
+    enhanced_prompt: str
+    model: str
+
+
+class GenerateLyricsRequest(BaseModel):
+    prompt: str = Field(
+        ...,
+        min_length=1,
+        description="User request describing the lyrics to generate.",
+    )
+    model: str = Field(
+        default="gpt-5.4-mini",
+        description="OpenAI model used for lyric generation.",
+    )
+
+
+class GenerateLyricsResponse(BaseModel):
+    lyrics: str
+    model: str
+
+
 class SongRecord(BaseModel):
     id: UUID
     user_id: UUID | None = None

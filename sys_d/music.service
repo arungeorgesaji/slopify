@@ -4,7 +4,8 @@ After=network.target
 
 [Service]
 WorkingDirectory=%h/slopify/music
-ExecStart=%h/slopify/music/venv/bin/uvicorn app.main:app --reload
+EnvironmentFile=%h/slopify/music/.env
+ExecStart=%h/slopify/music/venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 30002 --reload
 Restart=on-failure
 Environment="PATH=%h/slopify/music/venv/bin:/usr/bin"
 

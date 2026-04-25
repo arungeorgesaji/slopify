@@ -12,6 +12,7 @@ class Settings(BaseSettings):
         default="https://api.elevenlabs.io",
         alias="ELEVENLABS_BASE_URL",
     )
+    openai_api_key: str | None = Field(default=None, alias="OPENAI_API_KEY")
     supabase_url: str = Field(..., alias="SUPABASE_URL")
     supabase_service_role_key: str = Field(..., alias="SUPABASE_SERVICE_ROLE_KEY")
     supabase_storage_bucket: str = Field(
