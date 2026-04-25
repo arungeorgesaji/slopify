@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field, model_validator
 class SongGenerateRequest(BaseModel):
     title: str | None = Field(default=None, max_length=200)
     prompt: str | None = Field(default=None, min_length=3, max_length=2000)
+    lyrics: str | None = Field(default=None, min_length=1, max_length=10000)
     composition_plan: dict[str, Any] | None = None
     music_length_ms: int | None = Field(default=None, ge=3000, le=600000)
     model_id: str = Field(default="music_v1", max_length=100)
@@ -21,6 +22,10 @@ class SongGenerateRequest(BaseModel):
     def validate_generation_source(self) -> "SongGenerateRequest":
         if bool(self.prompt) == bool(self.composition_plan):
             raise ValueError("Provide exactly one of `prompt` or `composition_plan`.")
+        if self.lyrics is not None and self.composition_plan is not None:
+            raise ValueError(
+                "`lyrics` is only supported when generating from `prompt`."
+            )
         if self.force_instrumental and self.composition_plan is not None:
             raise ValueError(
                 "`force_instrumental` is only supported when generating from `prompt`."
@@ -67,6 +72,7 @@ class SongRecord(BaseModel):
     user_id: UUID | None = None
     title: str | None = None
     prompt: str | None = None
+    lyrics: str | None = None
     composition_plan: dict[str, Any] | None = None
     model_id: str
     music_length_ms: int | None = None
@@ -75,6 +81,8 @@ class SongRecord(BaseModel):
     status: str
     storage_bucket: str
     storage_path: str | None = None
+    image_storage_bucket: str
+    image_storage_path: str | None = None
     mime_type: str | None = None
     size_bytes: int | None = None
     error_message: str | None = None

@@ -31,6 +31,7 @@ def get_song_repository() -> SupabaseSongsRepository:
         url=settings.supabase_url,
         service_role_key=settings.supabase_service_role_key,
         bucket=settings.supabase_storage_bucket,
+        image_bucket=settings.supabase_image_storage_bucket,
     )
 
 

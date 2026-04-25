@@ -31,7 +31,10 @@ class ElevenLabsMusicService:
         if request.music_length_ms is not None:
             payload["music_length_ms"] = request.music_length_ms
         if request.prompt is not None:
-            payload["prompt"] = request.prompt
+            payload["prompt"] = self._build_prompt(
+                prompt=request.prompt,
+                lyrics=request.lyrics,
+            )
             payload["force_instrumental"] = request.force_instrumental
         else:
             payload["composition_plan"] = request.composition_plan
@@ -60,3 +63,9 @@ class ElevenLabsMusicService:
             audio_bytes=response.content,
             mime_type=response.headers.get("content-type", "audio/mpeg"),
         )
+
+    @staticmethod
+    def _build_prompt(*, prompt: str, lyrics: str | None) -> str:
+        if not lyrics:
+            return prompt
+        return f"{prompt.strip()}\n\nLyrics:\n{lyrics.strip()}"

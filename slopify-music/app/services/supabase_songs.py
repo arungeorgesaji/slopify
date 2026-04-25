@@ -13,8 +13,15 @@ class SongNotFoundError(Exception):
 
 
 class SupabaseSongsRepository:
-    def __init__(self, url: str, service_role_key: str, bucket: str) -> None:
+    def __init__(
+        self,
+        url: str,
+        service_role_key: str,
+        bucket: str,
+        image_bucket: str,
+    ) -> None:
         self._bucket = bucket
+        self._image_bucket = image_bucket
         self._client: Client = create_client(url, service_role_key)
 
     def create_song(self, request: SongGenerateRequest) -> SongRecord:
@@ -22,6 +29,7 @@ class SupabaseSongsRepository:
             "user_id": str(request.user_id) if request.user_id else None,
             "title": request.title,
             "prompt": request.prompt,
+            "lyrics": request.lyrics,
             "composition_plan": request.composition_plan,
             "model_id": request.model_id,
             "music_length_ms": request.music_length_ms,
@@ -29,6 +37,7 @@ class SupabaseSongsRepository:
             "respect_sections_durations": request.respect_sections_durations,
             "status": "processing",
             "storage_bucket": self._bucket,
+            "image_storage_bucket": self._image_bucket,
         }
         result = self._client.table("songs").insert(payload).execute()
         return SongRecord.model_validate(result.data[0])

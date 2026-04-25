@@ -113,7 +113,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"title\": \"Midnight Drive\",\n  \"prompt\": \"neon synthwave instrumental with pulsing bass, gated drums, and a wide cinematic chorus\",\n  \"music_length_ms\": 90000,\n  \"model_id\": \"music_v1\",\n  \"force_instrumental\": true,\n  \"respect_sections_durations\": false,\n  \"user_id\": null\n}"
+              "raw": "{\n  \"title\": \"Midnight Drive\",\n  \"prompt\": \"neon synthwave production with pulsing bass, gated drums, and a wide cinematic chorus\",\n  \"lyrics\": \"City lights blur in the rearview glow\\nI keep chasing echoes down an empty road\\nEvery signal fades but I still hear your name\\nMidnight keeps on driving me through the same old flame\",\n  \"music_length_ms\": 90000,\n  \"model_id\": \"music_v1\",\n  \"force_instrumental\": false,\n  \"respect_sections_durations\": false,\n  \"user_id\": null\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/songs/generate",
@@ -127,7 +127,7 @@
                 "generate"
               ]
             },
-            "description": "Generate a song from a prompt. Provide exactly one of `prompt` or `composition_plan`."
+            "description": "Generate a song from a prompt, optionally with separate `lyrics`. Provide exactly one of `prompt` or `composition_plan`."
           },
           "response": []
         },
