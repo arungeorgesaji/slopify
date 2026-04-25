@@ -7,7 +7,7 @@ from uuid import UUID
 from pydantic import BaseModel, Field, model_validator
 
 
-class SongGenerateRequest(BaseModel):
+class SongGenerationRequest(BaseModel):
     title: str | None = Field(default=None, max_length=200)
     prompt: str | None = Field(default=None, min_length=3, max_length=2000)
     lyrics: str | None = Field(default=None, min_length=1, max_length=10000)
@@ -19,7 +19,7 @@ class SongGenerateRequest(BaseModel):
     user_id: UUID | None = None
 
     @model_validator(mode="after")
-    def validate_generation_source(self) -> "SongGenerateRequest":
+    def validate_generation_source(self) -> "SongGenerationRequest":
         if bool(self.prompt) == bool(self.composition_plan):
             raise ValueError("Provide exactly one of `prompt` or `composition_plan`.")
         if self.lyrics is not None and self.composition_plan is not None:
@@ -31,6 +31,14 @@ class SongGenerateRequest(BaseModel):
                 "`force_instrumental` is only supported when generating from `prompt`."
             )
         return self
+
+
+class SongGenerateRequest(SongGenerationRequest):
+    pass
+
+
+class SongSessionGenerateRequest(SongGenerationRequest):
+    candidate_count: int = Field(default=3, ge=1, le=4)
 
 
 class EnhancePromptRequest(BaseModel):
@@ -93,6 +101,60 @@ class SongRecord(BaseModel):
 class SongListResponse(BaseModel):
     items: list[SongRecord]
     total: int
+
+
+class SongVariantRecord(BaseModel):
+    id: UUID
+    session_id: UUID
+    variant_index: int
+    title: str | None = None
+    prompt: str | None = None
+    lyrics: str | None = None
+    composition_plan: dict[str, Any] | None = None
+    model_id: str
+    music_length_ms: int | None = None
+    force_instrumental: bool
+    respect_sections_durations: bool
+    status: str
+    storage_bucket: str
+    storage_path: str | None = None
+    mime_type: str | None = None
+    size_bytes: int | None = None
+    error_message: str | None = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class SongSessionRecord(BaseModel):
+    id: UUID
+    user_id: UUID | None = None
+    title: str | None = None
+    prompt: str | None = None
+    lyrics: str | None = None
+    composition_plan: dict[str, Any] | None = None
+    model_id: str
+    music_length_ms: int | None = None
+    force_instrumental: bool
+    respect_sections_durations: bool
+    candidate_count: int
+    status: str
+    selected_variant_id: UUID | None = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class SongSessionDetail(SongSessionRecord):
+    variants: list[SongVariantRecord]
+
+
+class SongSessionListResponse(BaseModel):
+    items: list[SongSessionRecord]
+    total: int
+
+
+class SongVariantSelectionResponse(BaseModel):
+    session: SongSessionDetail
+    selected_variant: SongVariantRecord
 
 
 class HealthResponse(BaseModel):
