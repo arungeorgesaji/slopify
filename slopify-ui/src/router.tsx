@@ -8,6 +8,7 @@ import { CreatePage } from "@/routes/create-page"
 import { CreateReviewPage } from "@/routes/create-review-page"
 import { HomePage } from "@/routes/home-page"
 import { IntroPage } from "@/routes/intro-page"
+import { LyricsReviewPage } from "@/routes/lyrics-review-page"
 
 const rootRoute = createRootRoute({
   component: SlopifyShell,
@@ -37,10 +38,17 @@ const createReviewRoutePage = createRoute({
   component: CreateReviewPage,
 })
 
+const lyricsReviewRoutePage = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/create/lyrics/$draftId",
+  component: LyricsReviewPage,
+})
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   appRoute,
   createRoutePage,
+  lyricsReviewRoutePage,
   createReviewRoutePage,
 ])
 

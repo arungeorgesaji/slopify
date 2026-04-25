@@ -27,16 +27,18 @@ export type SongSessionDetail = Record<string, unknown> & {
   variants: SongVariantRecord[]
 }
 
-export async function generateSongSession(
+export async function generateSongSession({
+  prompt,
+  lyrics,
+}: {
   prompt: string
-): Promise<SongSessionDetail> {
+  lyrics: string
+}): Promise<SongSessionDetail> {
   const url = buildApiUrl(API_ENDPOINTS.generateSongSession)
 
   if (!url) {
     throw new Error("Backend URL is missing")
   }
-
-  const lyrics = await generateLyrics(prompt)
 
   const response = await fetch(url, {
     method: "POST",
@@ -70,7 +72,7 @@ export async function generateSongSession(
   return payload
 }
 
-async function generateLyrics(prompt: string) {
+export async function generateLyrics(prompt: string) {
   const url = buildApiUrl(API_ENDPOINTS.generateLyrics)
 
   if (!url) {

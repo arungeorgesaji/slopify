@@ -2,8 +2,22 @@ import { useState, type FormEvent } from "react"
 import { useNavigate } from "@tanstack/react-router"
 import { Loader2, Sparkles } from "lucide-react"
 import { buildApiUrl } from "@/lib/api"
+import {
+  buildMusicPrompt,
+  createDraftId,
+  DEFAULT_CREATE_OPTIONS,
+  DELIVERY_OPTIONS,
+  ENERGY_OPTIONS,
+  INSTRUMENTATION_OPTIONS,
+  LANGUAGE_OPTIONS,
+  saveCreateDraft,
+  SONG_TYPE_OPTIONS,
+  STRUCTURE_OPTIONS,
+  VOCAL_DIRECTION_OPTIONS,
+  type CreateOptions,
+} from "@/lib/create-flow"
 import { API_ENDPOINTS } from "@/lib/constants"
-import { generateSongSession, MAX_PROMPT_LENGTH } from "@/lib/song-sessions"
+import { generateLyrics, MAX_PROMPT_LENGTH } from "@/lib/song-sessions"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 
@@ -13,6 +27,7 @@ const ENHANCE_PROMPT_URL = buildApiUrl(API_ENDPOINTS.enhancePrompt)
 
 export function CreatePage() {
   const [prompt, setPrompt] = useState("")
+  const [options, setOptions] = useState<CreateOptions>(DEFAULT_CREATE_OPTIONS)
   const [feedback, setFeedback] = useState<string | null>(null)
   const [isEnhancing, setIsEnhancing] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -25,8 +40,8 @@ export function CreatePage() {
       const shouldUseBackend =
         Boolean(ENHANCE_PROMPT_URL) && prompt.trim().length > 0
       const nextPrompt = shouldUseBackend
-        ? await enhancePromptWithBackend(prompt)
-        : buildEnhancedPrompt(prompt)
+        ? await enhancePromptWithBackend(buildMusicPrompt(prompt, options))
+        : buildEnhancedPrompt(prompt, options)
 
       setPrompt(nextPrompt.slice(0, MAX_PROMPT_LENGTH))
       setFeedback(
@@ -37,7 +52,7 @@ export function CreatePage() {
             : "Expanded your idea into a more detailed music brief."
       )
     } catch {
-      const nextPrompt = buildEnhancedPrompt(prompt)
+      const nextPrompt = buildEnhancedPrompt(prompt, options)
 
       setPrompt(nextPrompt.slice(0, MAX_PROMPT_LENGTH))
       setFeedback(
@@ -54,7 +69,7 @@ export function CreatePage() {
     const trimmedPrompt = prompt.trim()
 
     if (trimmedPrompt.length < 3) {
-      setFeedback("Write at least 3 characters before generating.")
+      setFeedback("Write at least 3 characters before generating lyrics.")
       return
     }
 
@@ -64,20 +79,31 @@ export function CreatePage() {
     }
 
     setIsSubmitting(true)
-    setFeedback("Generating two variations. This can take a minute.")
+    setFeedback("Writing lyrics from your prompt and options.")
 
     try {
-      const session = await generateSongSession(trimmedPrompt)
+      const enrichedPrompt = buildMusicPrompt(trimmedPrompt, options)
+      const lyrics = await generateLyrics(enrichedPrompt)
+      const draftId = createDraftId()
+
+      saveCreateDraft({
+        id: draftId,
+        prompt: trimmedPrompt,
+        enrichedPrompt,
+        lyrics,
+        options,
+        createdAt: new Date().toISOString(),
+      })
 
       void navigate({
-        to: "/create/$sessionId",
-        params: { sessionId: session.id },
+        to: "/create/lyrics/$draftId",
+        params: { draftId },
       })
     } catch (error) {
       const errorMessage =
-        error instanceof Error ? error.message : "Unknown generation error"
+        error instanceof Error ? error.message : "Unknown lyrics error"
 
-      setFeedback(`Song generation failed: ${errorMessage}`)
+      setFeedback(`Lyrics generation failed: ${errorMessage}`)
     } finally {
       setIsSubmitting(false)
     }
@@ -96,7 +122,7 @@ export function CreatePage() {
         </Button>
       </div>
 
-      <div className="relative flex w-full max-w-5xl flex-col items-center justify-center px-4 py-12">
+      <div className="relative flex w-full max-w-6xl flex-col items-center justify-center px-4 py-12">
         <div className="mb-8 text-center">
           <p className="terminal-label">generation node / prompt uplink</p>
           <p className="mt-2 text-5xl font-black tracking-[-0.04em] text-foreground drop-shadow-[0_0_18px_rgba(183,214,106,0.16)] sm:text-7xl">
@@ -106,9 +132,9 @@ export function CreatePage() {
 
         <form
           onSubmit={handleSubmit}
-          className="flex w-full max-w-4xl flex-col items-center gap-5"
+          className="grid w-full gap-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(340px,0.8fr)]"
         >
-          <div className="hud-panel w-full overflow-hidden rounded-[6px] p-3">
+          <div className="hud-panel overflow-hidden rounded-[6px] p-3">
             <div className="flex items-center justify-between border-b border-border px-3 pb-3">
               <span className="terminal-label">audio request input</span>
               <span className="font-mono text-[10px] font-bold tracking-[0.18em] text-cyan uppercase">
@@ -123,7 +149,7 @@ export function CreatePage() {
                 setFeedback(null)
               }}
               placeholder="Describe your situation, mood, and the kind of music you want."
-              className="max-h-[300px] min-h-[190px] resize-none overflow-y-auto rounded-[3px] border-0 bg-background/35 px-5 py-5 text-lg leading-8 shadow-[inset_0_1px_0_rgba(238,244,237,0.04),inset_0_0_28px_rgba(0,0,0,0.24)] focus-visible:ring-0 sm:min-h-[220px] sm:text-xl"
+              className="max-h-[300px] min-h-[250px] resize-none overflow-y-auto rounded-[3px] border-0 bg-background/35 px-5 py-5 text-lg leading-8 shadow-[inset_0_1px_0_rgba(238,244,237,0.04),inset_0_0_28px_rgba(0,0,0,0.24)] focus-visible:ring-0 sm:text-xl"
             />
 
             <div className="flex flex-col gap-3 border-t border-border px-3 pt-3 sm:flex-row sm:items-center sm:justify-end">
@@ -151,12 +177,82 @@ export function CreatePage() {
                 {isSubmitting ? (
                   <>
                     <Loader2 className="size-4 animate-spin" />
-                    Generating...
+                    Writing Lyrics...
                   </>
                 ) : (
-                  "Generate Variations"
+                  "Create Lyrics"
                 )}
               </Button>
+            </div>
+          </div>
+
+          <div className="hud-panel rounded-[6px] p-4">
+            <div className="border-b border-border pb-3">
+              <p className="terminal-label">song options</p>
+            </div>
+            <div className="space-y-5 pt-4">
+              <OptionGroup
+                label="Vocal direction"
+                value={options.vocalDirection}
+                options={VOCAL_DIRECTION_OPTIONS}
+                onChange={(value) =>
+                  setOptions((current) => ({
+                    ...current,
+                    vocalDirection: value,
+                  }))
+                }
+              />
+              <OptionGroup
+                label="Song type"
+                value={options.songType}
+                options={SONG_TYPE_OPTIONS}
+                onChange={(value) =>
+                  setOptions((current) => ({ ...current, songType: value }))
+                }
+              />
+              <OptionGroup
+                label="Energy"
+                value={options.energy}
+                options={ENERGY_OPTIONS}
+                onChange={(value) =>
+                  setOptions((current) => ({ ...current, energy: value }))
+                }
+              />
+              <OptionGroup
+                label="Vocal language"
+                value={options.language}
+                options={LANGUAGE_OPTIONS}
+                onChange={(value) =>
+                  setOptions((current) => ({ ...current, language: value }))
+                }
+              />
+              <OptionGroup
+                label="Structure"
+                value={options.structure}
+                options={STRUCTURE_OPTIONS}
+                onChange={(value) =>
+                  setOptions((current) => ({ ...current, structure: value }))
+                }
+              />
+              <OptionGroup
+                label="Instrumentation"
+                value={options.instrumentation}
+                options={INSTRUMENTATION_OPTIONS}
+                onChange={(value) =>
+                  setOptions((current) => ({
+                    ...current,
+                    instrumentation: value,
+                  }))
+                }
+              />
+              <OptionGroup
+                label="Delivery"
+                value={options.delivery}
+                options={DELIVERY_OPTIONS}
+                onChange={(value) =>
+                  setOptions((current) => ({ ...current, delivery: value }))
+                }
+              />
             </div>
           </div>
         </form>
@@ -168,6 +264,42 @@ export function CreatePage() {
         ) : null}
       </div>
     </section>
+  )
+}
+
+function OptionGroup({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string
+  value: string
+  options: readonly string[]
+  onChange: (value: string) => void
+}) {
+  return (
+    <div>
+      <p className="mb-2 font-mono text-[10px] font-bold tracking-[0.18em] text-muted-foreground uppercase">
+        {label}
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {options.map((option) => (
+          <button
+            key={option}
+            type="button"
+            onClick={() => onChange(option)}
+            className={`rounded-[3px] border px-3 py-2 font-mono text-xs font-bold tracking-[0.06em] uppercase transition-all ${
+              value === option
+                ? "border-acid/70 bg-acid/15 text-acid shadow-[0_0_18px_rgba(183,243,91,0.12)]"
+                : "border-border bg-background/45 text-muted-foreground hover:border-cyan/60 hover:text-cyan"
+            }`}
+          >
+            {option}
+          </button>
+        ))}
+      </div>
+    </div>
   )
 }
 
@@ -213,17 +345,17 @@ function extractEnhancedPrompt(payload: Record<string, unknown>) {
   return firstCandidate?.trim() ?? ""
 }
 
-function buildEnhancedPrompt(prompt: string) {
+function buildEnhancedPrompt(prompt: string, options: CreateOptions) {
   const normalizedPrompt = prompt.trim()
 
   if (normalizedPrompt.length === 0) {
-    return buildStructuredPrompt(STARTER_PROMPT)
+    return buildStructuredPrompt(STARTER_PROMPT, options)
   }
 
-  return buildStructuredPrompt(normalizedPrompt)
+  return buildStructuredPrompt(normalizedPrompt, options)
 }
 
-function buildStructuredPrompt(prompt: string) {
+function buildStructuredPrompt(prompt: string, options: CreateOptions) {
   const energy = inferEnergy(prompt)
   const mood = inferMood(prompt)
 
@@ -234,6 +366,12 @@ function buildStructuredPrompt(prompt: string) {
     "",
     `Target mood: ${mood}.`,
     `Energy and pace: ${energy}.`,
+    `Vocal direction: ${options.vocalDirection}.`,
+    `Song type: ${options.songType}.`,
+    `Language: ${options.language}.`,
+    `Structure: ${options.structure}.`,
+    `Instrumentation: ${options.instrumentation}.`,
+    `Vocal delivery: ${options.delivery}.`,
     "Production notes: Build a strong opening, a memorable hook, and instrumentation that clearly supports the scene.",
     "Songwriting notes: Keep the emotional arc consistent and make the chorus feel earned.",
   ].join("\n")
