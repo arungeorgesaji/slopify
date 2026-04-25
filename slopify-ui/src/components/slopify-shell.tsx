@@ -17,7 +17,7 @@ export function SlopifyShell() {
     select: (state) => state.location.pathname,
   })
   const isIntroPage = pathname === "/"
-  const isCreatePage = pathname === "/create"
+  const isCreatePage = pathname.startsWith("/create")
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {

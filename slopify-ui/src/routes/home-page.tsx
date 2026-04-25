@@ -8,12 +8,9 @@ import { Separator } from "@/components/ui/separator"
 import { useSlopifyAppContext } from "@/components/slopify-app-context"
 import { fetchTracks, type Track } from "@/lib/tracks"
 
-const fakeDurationForTrack = (id: string) => "3:45"; 
-const fakeVibeForTrack = (id: string) => "Cyber";
-
 export function HomePage() {
-  // Resolved: Added setQueue and currentTrack from both versions
-  const { currentTrack, search, setCurrentTrack, setQueue } = useSlopifyAppContext()
+  const { currentTrack, search, setCurrentTrack, setQueue } =
+    useSlopifyAppContext()
   const deferredSearch = useDeferredValue(search)
   const [activeFilter, setActiveFilter] = useState<string | null>(null)
   const [selectedTrack, setSelectedTrack] = useState<Track | null>(null)
@@ -76,15 +73,18 @@ export function HomePage() {
                     {selectedTrack.vibe}
                   </Badge>
                   <Badge variant="outline" className="rounded-[3px] px-3 py-1">
-                    {selectedTrack.duration || fakeDurationForTrack(selectedTrack.id)}
+                    {selectedTrack.duration}
                   </Badge>
                   {selectedTrack.variationLabel && (
-                    <Badge variant="outline" className="rounded-[3px] px-3 py-1">
+                    <Badge
+                      variant="outline"
+                      className="rounded-[3px] px-3 py-1"
+                    >
                       {selectedTrack.variationLabel}
                     </Badge>
                   )}
                   <Button
-                    className="h-9 rounded-[4px] px-4 font-black uppercase tracking-[0.12em]"
+                    className="h-9 rounded-[4px] px-4 font-black tracking-[0.12em] uppercase"
                     onClick={() => setCurrentTrack(selectedTrack)}
                   >
                     <Play className="size-4 translate-x-px" />
@@ -99,16 +99,19 @@ export function HomePage() {
               <div className="hud-panel flex min-h-[360px] flex-col justify-between overflow-hidden rounded-[5px] bg-background/45 p-4 shadow-[0_24px_62px_rgba(0,0,0,0.4),0_0_36px_rgba(183,243,91,0.12)] sm:min-h-[420px] lg:min-h-0">
                 <div className="flex items-center justify-between border-b border-border pb-3">
                   <span className="terminal-label">audio visual module</span>
-                  <span className="flex items-center gap-2 font-mono text-[10px] font-black uppercase tracking-[0.18em] text-cyan">
+                  <span className="flex items-center gap-2 font-mono text-[10px] font-black tracking-[0.18em] text-cyan uppercase">
                     <span className="status-dot" />
                     live feed
                   </span>
                 </div>
-                
+
                 <div className="relative flex flex-1 items-center justify-center overflow-hidden">
                   <div className="absolute inset-5 rounded-[4px] border border-acid/18 bg-[radial-gradient(circle_at_center,_rgba(183,243,91,0.12),_transparent_42%)] shadow-[inset_0_0_68px_rgba(183,243,91,0.08)]" />
                   <div className="absolute inset-x-8 top-1/2 h-px bg-gradient-to-r from-transparent via-cyan/50 to-transparent" />
-                  <div className="relative flex h-48 items-end gap-2 sm:h-64" aria-hidden="true">
+                  <div
+                    className="relative flex h-48 items-end gap-2 sm:h-64"
+                    aria-hidden="true"
+                  >
                     {Array.from({ length: 22 }, (_, index) => (
                       <span
                         key={index}
@@ -131,7 +134,9 @@ export function HomePage() {
                   </div>
                   <div>
                     <p className="terminal-label">mix bus</p>
-                    <p className="mt-1 text-base font-black text-foreground">stereo</p>
+                    <p className="mt-1 text-base font-black text-foreground">
+                      stereo
+                    </p>
                   </div>
                   <div>
                     <p className="terminal-label">queue state</p>
@@ -145,7 +150,9 @@ export function HomePage() {
                 <div className="flex items-center justify-between gap-3 border-b border-border bg-background/45 px-5 py-3">
                   <div>
                     <p className="terminal-label">lyric stream</p>
-                    <h3 className="text-lg font-black tracking-[-0.02em]">Broadcast transcript</h3>
+                    <h3 className="text-lg font-black tracking-[-0.02em]">
+                      Broadcast transcript
+                    </h3>
                   </div>
                   <span className="slop-stamp">manual scroll</span>
                 </div>
@@ -156,7 +163,10 @@ export function HomePage() {
                       .map((section, idx) => (
                         <div key={idx} className="space-y-2">
                           {section.split("\n").map((line, lIdx) => (
-                            <p key={lIdx} className="max-w-3xl text-base leading-8 font-semibold text-foreground sm:text-lg">
+                            <p
+                              key={lIdx}
+                              className="max-w-3xl text-base leading-8 font-semibold text-foreground sm:text-lg"
+                            >
                               {line}
                             </p>
                           ))}
@@ -173,7 +183,9 @@ export function HomePage() {
           <div className="hud-panel overflow-hidden rounded-[4px] px-5 py-5 sm:px-6">
             <div className="relative z-10 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <p className="terminal-label">generation node / ai sound terminal</p>
+                <p className="terminal-label">
+                  generation node / ai sound terminal
+                </p>
                 <h1 className="text-3xl font-black tracking-[-0.03em] text-foreground sm:text-5xl">
                   Slopify audio console
                 </h1>
@@ -196,12 +208,16 @@ export function HomePage() {
                   <button
                     key={filter}
                     type="button"
-                    onClick={() => setActiveFilter((current) => (current === filter ? null : filter))}
+                    onClick={() =>
+                      setActiveFilter((current) =>
+                        current === filter ? null : filter
+                      )
+                    }
                     className="cursor-pointer"
                   >
                     <Badge
                       variant={isActive ? "default" : "outline"}
-                      className="h-8 rounded-[3px] px-3.5 font-mono text-xs uppercase tracking-wide sm:text-sm"
+                      className="h-8 rounded-[3px] px-3.5 font-mono text-xs tracking-wide uppercase sm:text-sm"
                     >
                       {filter}
                     </Badge>
@@ -216,7 +232,10 @@ export function HomePage() {
           {isLoading ? (
             <div className="space-y-3">
               {Array.from({ length: 6 }, (_, index) => (
-                <div key={index} className="h-16 animate-pulse rounded-[3px] border border-border bg-muted/70" />
+                <div
+                  key={index}
+                  className="h-16 animate-pulse rounded-[3px] border border-border bg-muted/70"
+                />
               ))}
             </div>
           ) : (
@@ -235,7 +254,9 @@ export function HomePage() {
                     <div
                       key={track.id}
                       className={`grid grid-cols-[minmax(0,1fr)_44px] items-center gap-4 px-4 py-3 transition-all hover:bg-acid/10 hover:shadow-[inset_3px_0_0_var(--acid)] md:grid-cols-[minmax(0,1fr)_64px_160px_144px_96px] md:px-6 ${
-                        isCurrentTrack ? "bg-acid/12 shadow-[inset_3px_0_0_var(--acid)]" : ""
+                        isCurrentTrack
+                          ? "bg-acid/12 shadow-[inset_3px_0_0_var(--acid)]"
+                          : ""
                       }`}
                     >
                       <button
@@ -252,9 +273,11 @@ export function HomePage() {
                           </div>
                         </div>
                         <div className="min-w-0">
-                          <p className="truncate text-lg font-black tracking-[-0.01em] sm:text-xl">{track.title}</p>
+                          <p className="truncate text-lg font-black tracking-[-0.01em] sm:text-xl">
+                            {track.title}
+                          </p>
                           <p className="terminal-label md:hidden">
-                            {fakeVibeForTrack(track.id)} / {fakeDurationForTrack(track.id)}
+                            {track.vibe} / {track.duration}
                           </p>
                         </div>
                       </button>
@@ -265,9 +288,15 @@ export function HomePage() {
                       >
                         <Play className="size-4 translate-x-px" />
                       </button>
-                      <span className="hidden text-sm text-muted-foreground md:block">{track.vibe || fakeVibeForTrack(track.id)}</span>
-                      <span className="hidden text-sm text-muted-foreground md:block">--</span>
-                      <span className="hidden text-right text-sm text-muted-foreground md:block">{track.duration || fakeDurationForTrack(track.id)}</span>
+                      <span className="hidden text-sm text-muted-foreground md:block">
+                        {track.vibe}
+                      </span>
+                      <span className="hidden text-sm text-muted-foreground md:block">
+                        {track.dateAdded}
+                      </span>
+                      <span className="hidden text-right text-sm text-muted-foreground md:block">
+                        {track.duration}
+                      </span>
                     </div>
                   )
                 })}
@@ -277,8 +306,12 @@ export function HomePage() {
 
           {!isLoading && visibleTracks.length === 0 && (
             <div className="rounded-[4px] border border-dashed border-border bg-muted/30 px-6 py-12 text-center">
-              <p className="text-lg font-medium">No tracks match this search.</p>
-              <p className="mt-2 text-sm text-muted-foreground">Try a different phrase or switch the filter.</p>
+              <p className="text-lg font-medium">
+                No tracks match this search.
+              </p>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Try a different phrase or switch the filter.
+              </p>
             </div>
           )}
         </div>

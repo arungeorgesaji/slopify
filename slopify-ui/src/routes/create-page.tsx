@@ -1,16 +1,15 @@
 import { useState, type FormEvent } from "react"
-import { useQueryClient } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
-import { Sparkles } from "lucide-react"
+import { Loader2, Sparkles } from "lucide-react"
 import { buildApiUrl } from "@/lib/api"
 import { API_ENDPOINTS } from "@/lib/constants"
+import { generateSongSession, MAX_PROMPT_LENGTH } from "@/lib/song-sessions"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 
 const STARTER_PROMPT = `I'm coming down after a packed work week and driving alone through the city at night.
 I want something reflective but still uplifting, with warm synths, a steady beat, and a chorus that feels hopeful.`
 const ENHANCE_PROMPT_URL = buildApiUrl(API_ENDPOINTS.enhancePrompt)
-const GENERATE_SONG_URL = buildApiUrl(API_ENDPOINTS.generateSong)
 
 export function CreatePage() {
   const [prompt, setPrompt] = useState("")
@@ -18,28 +17,29 @@ export function CreatePage() {
   const [isEnhancing, setIsEnhancing] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const navigate = useNavigate()
-  const queryClient = useQueryClient()
 
   const handleEnhance = async () => {
     setIsEnhancing(true)
 
     try {
-      const nextPrompt = ENHANCE_PROMPT_URL
+      const shouldUseBackend =
+        Boolean(ENHANCE_PROMPT_URL) && prompt.trim().length > 0
+      const nextPrompt = shouldUseBackend
         ? await enhancePromptWithBackend(prompt)
         : buildEnhancedPrompt(prompt)
 
-      setPrompt(nextPrompt)
+      setPrompt(nextPrompt.slice(0, MAX_PROMPT_LENGTH))
       setFeedback(
         prompt.trim().length === 0
           ? "Added a richer starter prompt you can refine."
-          : ENHANCE_PROMPT_URL
+          : shouldUseBackend
             ? "Prompt enhanced with the backend service."
             : "Expanded your idea into a more detailed music brief."
       )
     } catch {
       const nextPrompt = buildEnhancedPrompt(prompt)
 
-      setPrompt(nextPrompt)
+      setPrompt(nextPrompt.slice(0, MAX_PROMPT_LENGTH))
       setFeedback(
         "Backend enhancement was unavailable, so a local fallback prompt was used."
       )
@@ -51,23 +51,28 @@ export function CreatePage() {
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
-    if (prompt.trim().length === 0) {
-      setFeedback("Write a prompt first.")
+    const trimmedPrompt = prompt.trim()
+
+    if (trimmedPrompt.length < 3) {
+      setFeedback("Write at least 3 characters before generating.")
       return
     }
 
-    if (!GENERATE_SONG_URL) {
-      setFeedback("Backend URL is missing. Add VITE_BACKEND_BASE_URL to env.")
+    if (trimmedPrompt.length > MAX_PROMPT_LENGTH) {
+      setFeedback(`Keep the prompt under ${MAX_PROMPT_LENGTH} characters.`)
       return
     }
 
     setIsSubmitting(true)
+    setFeedback("Generating two variations. This can take a minute.")
 
     try {
-      await generateSong(prompt)
-      await queryClient.invalidateQueries({ queryKey: ["tracks"] })
-      setFeedback("Song generation started.")
-      void navigate({ to: "/app" })
+      const session = await generateSongSession(trimmedPrompt)
+
+      void navigate({
+        to: "/create/$sessionId",
+        params: { sessionId: session.id },
+      })
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : "Unknown generation error"
@@ -79,26 +84,23 @@ export function CreatePage() {
   }
 
   return (
-    <section className="flex min-h-[calc(100svh-9rem)] items-center justify-center overflow-hidden">
-      <div className="relative flex w-full max-w-5xl flex-col items-center justify-center px-4 py-8">
-        <div className="absolute top-4 right-4 sm:top-6 sm:right-6">
-          <Button
-            type="button"
-            variant="ghost"
-            className="h-10 rounded-[3px] px-5"
-            onClick={() => navigate({ to: "/app" })}
-          >
-            Library
-          </Button>
-        </div>
+    <section className="relative flex min-h-[calc(100svh-3rem)] items-center justify-center overflow-hidden">
+      <div className="absolute top-0 right-0 z-10">
+        <Button
+          type="button"
+          variant="ghost"
+          className="h-10 rounded-[3px] px-5"
+          onClick={() => navigate({ to: "/app" })}
+        >
+          Library
+        </Button>
+      </div>
 
+      <div className="relative flex w-full max-w-5xl flex-col items-center justify-center px-4 py-12">
         <div className="mb-8 text-center">
           <p className="terminal-label">generation node / prompt uplink</p>
           <p className="mt-2 text-5xl font-black tracking-[-0.04em] text-foreground drop-shadow-[0_0_18px_rgba(183,214,106,0.16)] sm:text-7xl">
             Slopify
-          </p>
-          <p className="mt-3 text-sm font-semibold tracking-[0.24em] text-muted-foreground uppercase">
-            Submit an audio signal brief
           </p>
         </div>
 
@@ -110,16 +112,17 @@ export function CreatePage() {
             <div className="flex items-center justify-between border-b border-border px-3 pb-3">
               <span className="terminal-label">audio request input</span>
               <span className="font-mono text-[10px] font-bold tracking-[0.18em] text-cyan uppercase">
-                signal draft
+                {prompt.length}/{MAX_PROMPT_LENGTH}
               </span>
             </div>
             <Textarea
               value={prompt}
+              maxLength={MAX_PROMPT_LENGTH}
               onChange={(event) => {
                 setPrompt(event.target.value)
                 setFeedback(null)
               }}
-              placeholder="Describe the scene, emotional signal, tempo, sound palette, and the kind of AI track you want."
+              placeholder="Describe your situation, mood, and the kind of music you want."
               className="max-h-[300px] min-h-[190px] resize-none overflow-y-auto rounded-[3px] border-0 bg-background/35 px-5 py-5 text-lg leading-8 shadow-[inset_0_1px_0_rgba(238,244,237,0.04),inset_0_0_28px_rgba(0,0,0,0.24)] focus-visible:ring-0 sm:min-h-[220px] sm:text-xl"
             />
 
@@ -130,41 +133,42 @@ export function CreatePage() {
                 size="lg"
                 className="h-11 rounded-[3px] px-5"
                 onClick={() => void handleEnhance()}
-                disabled={isEnhancing}
+                disabled={isEnhancing || isSubmitting}
               >
-                <Sparkles className="size-4" />
+                {isEnhancing ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Sparkles className="size-4" />
+                )}
                 {isEnhancing ? "Tuning Signal..." : "Enhance With AI"}
               </Button>
               <Button
                 type="submit"
                 size="lg"
                 className="h-11 rounded-[3px] px-7"
-                disabled={isSubmitting}
+                disabled={isSubmitting || isEnhancing}
               >
-                {isSubmitting ? "Submitting..." : "Submit Signal"}
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  "Generate Variations"
+                )}
               </Button>
             </div>
           </div>
-
-          {feedback ? (
-            <div className="rounded-[3px] border border-border bg-background/70 px-4 py-2 text-center font-mono text-xs font-bold tracking-[0.08em] text-muted-foreground uppercase shadow-[inset_0_1px_0_rgba(238,244,237,0.04)]">
-              {feedback}
-            </div>
-          ) : null}
         </form>
+
+        {feedback ? (
+          <div className="mt-5 rounded-[3px] border border-border bg-background/70 px-4 py-2 text-center font-mono text-xs font-bold tracking-[0.08em] text-muted-foreground uppercase shadow-[inset_0_1px_0_rgba(238,244,237,0.04)]">
+            {feedback}
+          </div>
+        ) : null}
       </div>
     </section>
   )
-}
-
-function buildEnhancedPrompt(prompt: string) {
-  const normalizedPrompt = prompt.trim()
-
-  if (normalizedPrompt.length === 0) {
-    return buildStructuredPrompt(STARTER_PROMPT)
-  }
-
-  return buildStructuredPrompt(normalizedPrompt)
 }
 
 async function enhancePromptWithBackend(prompt: string) {
@@ -192,50 +196,6 @@ async function enhancePromptWithBackend(prompt: string) {
   return enhancedPrompt
 }
 
-async function generateSong(prompt: string) {
-  const response = await fetch(GENERATE_SONG_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
-    body: JSON.stringify({
-      title: deriveTitle(prompt),
-      prompt,
-      music_length_ms: 90000,
-      model_id: "music_v1",
-      force_instrumental: false,
-      respect_sections_durations: false,
-      user_id: null,
-    }),
-  })
-
-  if (!response.ok) {
-    const responseText = await response.text()
-    throw new Error(
-      `HTTP ${response.status}: ${responseText.slice(0, 140) || "Request failed"}`
-    )
-  }
-}
-
-function deriveTitle(prompt: string) {
-  const words = prompt
-    .trim()
-    .replace(/\s+/g, " ")
-    .split(" ")
-    .filter(Boolean)
-    .slice(0, 5)
-
-  if (words.length === 0) {
-    return "Untitled Signal"
-  }
-
-  return words
-    .join(" ")
-    .replace(/[^\w\s'-]/g, "")
-    .trim()
-}
-
 function extractEnhancedPrompt(payload: Record<string, unknown>) {
   const candidates = [
     payload.prompt,
@@ -245,12 +205,22 @@ function extractEnhancedPrompt(payload: Record<string, unknown>) {
     payload.message,
   ]
 
-  const firstString = candidates.find(
+  const firstCandidate = candidates.find(
     (candidate): candidate is string =>
       typeof candidate === "string" && candidate.trim().length > 0
   )
 
-  return firstString?.trim() ?? ""
+  return firstCandidate?.trim() ?? ""
+}
+
+function buildEnhancedPrompt(prompt: string) {
+  const normalizedPrompt = prompt.trim()
+
+  if (normalizedPrompt.length === 0) {
+    return buildStructuredPrompt(STARTER_PROMPT)
+  }
+
+  return buildStructuredPrompt(normalizedPrompt)
 }
 
 function buildStructuredPrompt(prompt: string) {

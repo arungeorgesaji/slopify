@@ -9,15 +9,22 @@ export function MusicPlayer() {
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [progress, setProgress] = useState([0])
+  const [currentTime, setCurrentTime] = useState(0)
   const [volume, setVolume] = useState([72])
   const [audioError, setAudioError] = useState<string | null>(null)
 
   useEffect(() => {
-    setIsPlaying(false)
-    setProgress([0])
-    setAudioError(null)
     audioRef.current?.pause()
     audioRef.current?.load()
+
+    const resetTimer = window.setTimeout(() => {
+      setIsPlaying(false)
+      setProgress([0])
+      setCurrentTime(0)
+      setAudioError(null)
+    }, 0)
+
+    return () => window.clearTimeout(resetTimer)
   }, [currentTrack])
 
   useEffect(() => {
@@ -34,8 +41,10 @@ export function MusicPlayer() {
     setProgress([nextProgress])
 
     if (audioRef.current && Number.isFinite(audioRef.current.duration)) {
-      audioRef.current.currentTime =
-        audioRef.current.duration * (nextProgress / 100)
+      const nextCurrentTime = audioRef.current.duration * (nextProgress / 100)
+
+      audioRef.current.currentTime = nextCurrentTime
+      setCurrentTime(nextCurrentTime)
     }
   }
 
@@ -71,9 +80,10 @@ export function MusicPlayer() {
       return
     }
 
-    setProgress([
-      (audioRef.current.currentTime / audioRef.current.duration) * 100,
-    ])
+    const nextCurrentTime = audioRef.current.currentTime
+
+    setCurrentTime(nextCurrentTime)
+    setProgress([(nextCurrentTime / audioRef.current.duration) * 100])
   }
 
   const handleSkip = (direction: -1 | 1) => {
@@ -153,9 +163,7 @@ export function MusicPlayer() {
           </div>
 
           <div className="flex w-full items-center gap-3 font-mono text-[11px] text-muted-foreground">
-            <span>
-              {formatProgressTime(audioRef.current?.currentTime ?? 0)}
-            </span>
+            <span>{formatProgressTime(currentTime)}</span>
             <Slider
               value={progress}
               onValueChange={handleProgressChange}

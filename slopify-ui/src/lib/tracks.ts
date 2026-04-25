@@ -17,8 +17,22 @@ export type Track = {
 type BackendSong = Record<string, unknown>
 
 const SONGS_URL = buildApiUrl(API_ENDPOINTS.songs)
+const SONG_SESSIONS_URL = buildApiUrl(API_ENDPOINTS.songSessions)
 
 export async function fetchTracks(): Promise<Track[]> {
+  if (!hasSongsBackend()) {
+    return []
+  }
+
+  const [songTracks, selectedSessionTracks] = await Promise.all([
+    fetchSongTracks(),
+    fetchSelectedSessionTracks(),
+  ])
+
+  return dedupeTracks([...selectedSessionTracks, ...songTracks])
+}
+
+async function fetchSongTracks(): Promise<Track[]> {
   if (!SONGS_URL) {
     return []
   }
@@ -35,6 +49,57 @@ export async function fetchTracks(): Promise<Track[]> {
   return songs
     .flatMap(mapBackendSongToTracks)
     .filter((track): track is Track => track !== null)
+}
+
+async function fetchSelectedSessionTracks(): Promise<Track[]> {
+  if (!SONG_SESSIONS_URL) {
+    return []
+  }
+
+  const response = await fetch(`${SONG_SESSIONS_URL}?limit=100&offset=0`)
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch song sessions")
+  }
+
+  const payload = (await response.json()) as unknown
+  const sessions = extractSongs(payload).filter((session) =>
+    firstString(session.selected_variant_id, session.selectedVariantId)
+  )
+  const sessionIds = sessions
+    .map((session) => firstString(session.id, session.session_id, session.uuid))
+    .filter(Boolean)
+
+  const sessionDetails = await Promise.allSettled(
+    sessionIds.map((sessionId) => fetchSongSessionDetail(sessionId))
+  )
+
+  return sessionDetails
+    .flatMap((result) => (result.status === "fulfilled" ? [result.value] : []))
+    .map(mapSelectedSessionVariantToTrack)
+    .filter((track): track is Track => track !== null)
+}
+
+async function fetchSongSessionDetail(sessionId: string) {
+  const url = buildApiUrl(API_ENDPOINTS.songSessionById(sessionId))
+
+  if (!url) {
+    throw new Error("Backend URL is missing")
+  }
+
+  const response = await fetch(url)
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch song session detail")
+  }
+
+  const payload = (await response.json()) as unknown
+
+  if (!isRecord(payload)) {
+    throw new Error("Song session response was invalid")
+  }
+
+  return payload
 }
 
 function extractSongs(payload: unknown) {
@@ -59,17 +124,59 @@ function mapBackendSongToTracks(song: BackendSong): Array<Track | null> {
   const variations = extractVariations(song)
 
   if (variations.length === 0) {
-    return [mapBackendSongToTrack(song)]
+    return [mapBackendSongToTrack(song, { audioKind: "song" })]
   }
 
   return variations.map((variation, index) =>
-    mapBackendSongToTrack({ ...song, ...variation }, index + 1)
+    mapBackendSongToTrack(
+      { ...song, ...variation },
+      {
+        audioKind: "song",
+        includeVariationInId: true,
+        variationIndex: index + 1,
+      }
+    )
+  )
+}
+
+function mapSelectedSessionVariantToTrack(session: BackendSong): Track | null {
+  const selectedVariantId = firstString(
+    session.selected_variant_id,
+    session.selectedVariantId
+  )
+
+  if (!selectedVariantId) {
+    return null
+  }
+
+  const selectedVariant = extractVariations(session).find(
+    (variant) =>
+      firstString(variant.id, variant.variant_id) === selectedVariantId
+  )
+
+  if (!selectedVariant) {
+    return null
+  }
+
+  const variationIndex = firstNumber(selectedVariant.variant_index)
+
+  return mapBackendSongToTrack(
+    { ...session, ...selectedVariant },
+    {
+      audioKind: "variant",
+      includeVariationInId: false,
+      variationIndex: variationIndex ?? undefined,
+    }
   )
 }
 
 function mapBackendSongToTrack(
   song: BackendSong,
-  variationIndex?: number
+  options: {
+    audioKind: "song" | "variant"
+    includeVariationInId?: boolean
+    variationIndex?: number
+  }
 ): Track | null {
   const id = firstString(song.id, song.song_id, song.uuid)
   const title = firstString(song.title, song.name)
@@ -90,10 +197,14 @@ function mapBackendSongToTrack(
     "unknown"
   const variationLabel =
     firstString(song.variation, song.variant, song.version, song.label) ||
-    (variationIndex ? `Variation ${variationIndex}` : "")
+    (options.variationIndex ? `Variation ${options.variationIndex}` : "")
+  const trackId =
+    options.includeVariationInId && options.variationIndex
+      ? `${id}-${options.variationIndex}`
+      : id
 
   return {
-    id: variationIndex ? `${id}-${variationIndex}` : id,
+    id: trackId,
     title: variationLabel ? `${title} (${variationLabel})` : title,
     prompt,
     lyrics,
@@ -101,7 +212,7 @@ function mapBackendSongToTrack(
     status,
     duration,
     dateAdded,
-    audioUrl: getAudioUrl(song, id),
+    audioUrl: getAudioUrl(song, id, options.audioKind),
     variationLabel,
   }
 }
@@ -123,7 +234,11 @@ function extractVariations(song: BackendSong) {
   return []
 }
 
-function getAudioUrl(song: BackendSong, songId: string) {
+function getAudioUrl(
+  song: BackendSong,
+  recordId: string,
+  audioKind: "song" | "variant"
+) {
   const directUrl = firstString(
     song.audio_url,
     song.audioUrl,
@@ -178,7 +293,24 @@ function getAudioUrl(song: BackendSong, songId: string) {
     }
   }
 
-  return buildApiUrl(API_ENDPOINTS.songAudio(songId))
+  return buildApiUrl(
+    audioKind === "variant"
+      ? API_ENDPOINTS.songVariantAudio(recordId)
+      : API_ENDPOINTS.songAudio(recordId)
+  )
+}
+
+function dedupeTracks(tracks: Track[]) {
+  const seenTrackIds = new Set<string>()
+
+  return tracks.filter((track) => {
+    if (seenTrackIds.has(track.id)) {
+      return false
+    }
+
+    seenTrackIds.add(track.id)
+    return true
+  })
 }
 
 function firstString(...values: unknown[]) {
@@ -191,12 +323,21 @@ function firstString(...values: unknown[]) {
 }
 
 function firstNumber(...values: unknown[]) {
-  return (
-    values.find(
-      (candidate): candidate is number =>
-        typeof candidate === "number" && Number.isFinite(candidate)
-    ) ?? null
-  )
+  for (const candidate of values) {
+    if (typeof candidate === "number" && Number.isFinite(candidate)) {
+      return candidate
+    }
+
+    if (typeof candidate === "string") {
+      const parsed = Number(candidate)
+
+      if (Number.isFinite(parsed)) {
+        return parsed
+      }
+    }
+  }
+
+  return null
 }
 
 function formatDuration(durationMs: number | null) {
@@ -231,4 +372,8 @@ function formatDate(value: string) {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null
+}
+
+function hasSongsBackend() {
+  return Boolean(SONGS_URL || SONG_SESSIONS_URL)
 }
