@@ -1,4 +1,4 @@
-import { useDeferredValue, useMemo, useState } from "react"
+import { useDeferredValue, useEffect, useMemo, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { ArrowLeft, Play } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
@@ -6,20 +6,22 @@ import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import { useSlopifyAppContext } from "@/components/slopify-app-context"
-import { fetchTracks, TOPIC_FILTERS, type Track } from "@/lib/tracks"
+import { fetchTracks, type Track } from "@/lib/tracks"
 
 export function HomePage() {
-  const { search, setCurrentTrack } = useSlopifyAppContext()
+  const { search, setCurrentTrack, setQueue } = useSlopifyAppContext()
   const deferredSearch = useDeferredValue(search)
-  const [activeFilter, setActiveFilter] = useState<
-    (typeof TOPIC_FILTERS)[number] | null
-  >(null)
+  const [activeFilter, setActiveFilter] = useState<string | null>(null)
   const [selectedTrack, setSelectedTrack] = useState<Track | null>(null)
 
   const { data: tracks = [], isLoading } = useQuery({
     queryKey: ["tracks"],
     queryFn: fetchTracks,
   })
+
+  useEffect(() => {
+    setQueue(tracks)
+  }, [setQueue, tracks])
 
   const visibleTracks = useMemo(() => {
     const normalizedSearch = deferredSearch.trim().toLowerCase()
@@ -34,6 +36,12 @@ export function HomePage() {
       return matchesSearch && matchesFilter
     })
   }, [activeFilter, deferredSearch, tracks])
+
+  const availableFilters = useMemo(() => {
+    return Array.from(new Set(tracks.map((track) => track.vibe))).filter(
+      (filter) => filter.length > 0 && filter !== "unknown"
+    )
+  }, [tracks])
 
   return (
     <section className={selectedTrack ? "" : "space-y-6"}>
@@ -60,7 +68,7 @@ export function HomePage() {
                     {selectedTrack.title}
                   </h2>
                   <p className="mt-2 max-w-xl text-sm font-medium text-muted-foreground">
-                    Slopify output channel / synthetic hook analysis.
+                    Backend output channel / generated song details.
                   </p>
                 </div>
 
@@ -74,6 +82,14 @@ export function HomePage() {
                   <Badge variant="outline" className="rounded-[3px] px-3 py-1">
                     {selectedTrack.duration}
                   </Badge>
+                  {selectedTrack.variationLabel ? (
+                    <Badge
+                      variant="outline"
+                      className="rounded-[3px] px-3 py-1"
+                    >
+                      {selectedTrack.variationLabel}
+                    </Badge>
+                  ) : null}
                 </div>
 
                 <Button
@@ -86,7 +102,7 @@ export function HomePage() {
 
                 <div className="mt-auto grid gap-3 border-t border-border pt-4 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
                   <div>
-                    <p className="terminal-label">slop index</p>
+                    <p className="terminal-label">song id</p>
                     <p className="mt-1 text-lg font-black text-acid">
                       {selectedTrack.id.slice(0, 8)}
                     </p>
@@ -184,8 +200,7 @@ export function HomePage() {
                   Slopify audio console
                 </h1>
                 <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-                  A futuristic sound lab for synthetic tracks, strange hooks,
-                  and broadcast-ready slop.
+                  Tracks generated and stored by the backend music service.
                 </p>
               </div>
               <div className="flex items-center gap-2 rounded-md border border-border bg-background/45 px-3 py-2 font-mono text-xs font-bold tracking-[0.18em] text-muted-foreground uppercase shadow-[inset_0_1px_0_rgba(238,244,237,0.05)]">
@@ -196,7 +211,7 @@ export function HomePage() {
           </div>
           <ScrollArea className="w-full whitespace-nowrap">
             <div className="flex gap-2 pb-2">
-              {TOPIC_FILTERS.map((filter) => {
+              {availableFilters.map((filter) => {
                 const isActive = filter === activeFilter
                 return (
                   <button
@@ -297,10 +312,10 @@ export function HomePage() {
           {!isLoading && visibleTracks.length === 0 ? (
             <div className="rounded-[4px] border border-dashed border-border bg-muted/30 px-6 py-12 text-center">
               <p className="text-lg font-medium">
-                No slop tracks match this search.
+                No tracks match this search.
               </p>
               <p className="mt-2 text-sm text-muted-foreground">
-                Try a worse phrase or switch the vibe filter.
+                Try a different phrase or switch the filter.
               </p>
             </div>
           ) : null}

@@ -5,15 +5,17 @@ import { Slider } from "@/components/ui/slider"
 import { useSlopifyAppContext } from "@/components/slopify-app-context"
 
 export function MusicPlayer() {
-  const { currentTrack } = useSlopifyAppContext()
+  const { currentTrack, queue, setCurrentTrack } = useSlopifyAppContext()
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [progress, setProgress] = useState([0])
   const [volume, setVolume] = useState([72])
+  const [audioError, setAudioError] = useState<string | null>(null)
 
   useEffect(() => {
     setIsPlaying(false)
     setProgress([0])
+    setAudioError(null)
     audioRef.current?.pause()
     audioRef.current?.load()
   }, [currentTrack])
@@ -52,7 +54,16 @@ export function MusicPlayer() {
       return
     }
 
-    void audioRef.current.play().then(() => setIsPlaying(true))
+    void audioRef.current
+      .play()
+      .then(() => {
+        setAudioError(null)
+        setIsPlaying(true)
+      })
+      .catch(() => {
+        setIsPlaying(false)
+        setAudioError("Audio failed")
+      })
   }
 
   const handleTimeUpdate = () => {
@@ -63,6 +74,24 @@ export function MusicPlayer() {
     setProgress([
       (audioRef.current.currentTime / audioRef.current.duration) * 100,
     ])
+  }
+
+  const handleSkip = (direction: -1 | 1) => {
+    if (!currentTrack || queue.length === 0) {
+      return
+    }
+
+    const currentIndex = queue.findIndex(
+      (track) => track.id === currentTrack.id
+    )
+
+    if (currentIndex === -1) {
+      setCurrentTrack(queue[0] ?? null)
+      return
+    }
+
+    const nextIndex = (currentIndex + direction + queue.length) % queue.length
+    setCurrentTrack(queue[nextIndex] ?? null)
   }
 
   return (
@@ -93,6 +122,8 @@ export function MusicPlayer() {
               size="icon"
               className="size-8 rounded-md text-foreground hover:text-primary"
               aria-label="Previous track"
+              onClick={() => handleSkip(-1)}
+              disabled={queue.length < 2}
             >
               <SkipBack className="size-4" />
             </Button>
@@ -114,6 +145,8 @@ export function MusicPlayer() {
               size="icon"
               className="size-8 rounded-md text-foreground hover:text-primary"
               aria-label="Next track"
+              onClick={() => handleSkip(1)}
+              disabled={queue.length < 2}
             >
               <SkipForward className="size-4" />
             </Button>
@@ -131,6 +164,11 @@ export function MusicPlayer() {
             />
             <span>{currentTrack?.duration ?? "--"}</span>
           </div>
+          {audioError ? (
+            <p className="font-mono text-[10px] font-bold tracking-[0.18em] text-destructive uppercase">
+              {audioError}
+            </p>
+          ) : null}
         </div>
 
         <div className="flex items-center gap-3 rounded-[3px] border border-border bg-surface/80 px-3 py-3 shadow-[inset_0_1px_0_rgba(238,244,237,0.05)] lg:justify-self-end lg:px-4">

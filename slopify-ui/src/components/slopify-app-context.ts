@@ -4,8 +4,10 @@ import type { Track } from "@/lib/tracks"
 
 type SlopifyAppContextValue = {
   currentTrack: Track | null
+  queue: Track[]
   search: string
   setCurrentTrack: Dispatch<SetStateAction<Track | null>>
+  setQueue: Dispatch<SetStateAction<Track[]>>
 }
 
 export const SlopifyAppContext = createContext<SlopifyAppContextValue | null>(

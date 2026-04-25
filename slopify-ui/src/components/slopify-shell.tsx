@@ -9,6 +9,7 @@ import type { Track } from "@/lib/tracks"
 export function SlopifyShell() {
   const [search, setSearch] = useState("")
   const [currentTrack, setCurrentTrack] = useState<Track | null>(null)
+  const [queue, setQueue] = useState<Track[]>([])
   const desktopSearchRef = useRef<HTMLInputElement | null>(null)
   const mobileSearchRef = useRef<HTMLInputElement | null>(null)
   const navigate = useNavigate()
@@ -52,7 +53,7 @@ export function SlopifyShell() {
   if (isCreatePage) {
     return (
       <SlopifyAppContext.Provider
-        value={{ currentTrack, search, setCurrentTrack }}
+        value={{ currentTrack, queue, search, setCurrentTrack, setQueue }}
       >
         <div className="min-h-svh bg-transparent">
           <main className="w-full px-4 pt-6 pb-10 sm:px-6 lg:px-8">
@@ -65,7 +66,7 @@ export function SlopifyShell() {
 
   return (
     <SlopifyAppContext.Provider
-      value={{ currentTrack, search, setCurrentTrack }}
+      value={{ currentTrack, queue, search, setCurrentTrack, setQueue }}
     >
       <div className="min-h-svh bg-transparent">
         <header className="fixed inset-x-0 top-0 z-40 border-b border-border bg-background/82 text-foreground shadow-[0_14px_54px_rgba(0,0,0,0.5)] backdrop-blur-xl">
