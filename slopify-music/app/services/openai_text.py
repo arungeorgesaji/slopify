@@ -36,6 +36,18 @@ Rules:
 - Do not include commentary, section notes unless they are part of the requested lyrical format, or markdown fencing.
 """.strip()
 
+TITLE_INSTRUCTIONS = """
+You create a concise original song title based on lyrics.
+
+Rules:
+- Return only the title text.
+- Use 2 to 6 words when possible.
+- Make it memorable, specific, and singable.
+- Base it on the lyrics' central hook, image, or repeated phrase.
+- Do not add quotation marks, markdown, labels, or explanations.
+- Do not output more than 80 characters.
+""".strip()
+
 
 class OpenAITextError(Exception):
     """Raised when OpenAI text generation fails."""
@@ -56,6 +68,13 @@ class OpenAITextService:
         return self._generate_text(
             instructions=LYRICS_INSTRUCTIONS,
             prompt=prompt,
+            model=model,
+        )
+
+    def generate_title_from_lyrics(self, lyrics: str, model: str) -> str:
+        return self._generate_text(
+            instructions=TITLE_INSTRUCTIONS,
+            prompt=self._build_title_input(lyrics),
             model=model,
         )
 
@@ -84,3 +103,45 @@ class OpenAITextService:
             "or not explicitly musical.\n\n"
             f"User text:\n{cleaned_prompt}"
         )
+
+    @staticmethod
+    def _build_title_input(lyrics: str) -> str:
+        cleaned_lyrics = lyrics.strip()
+        return (
+            "Write a strong song title for the following lyrics. Prefer the main hook "
+            "or most emotionally central phrase.\n\n"
+            f"Lyrics:\n{cleaned_lyrics}"
+        )
+
+
+def derive_title_from_lyrics(lyrics: str) -> str:
+    normalized_lines = [
+        line.strip()
+        for line in lyrics.splitlines()
+        if line.strip() and not line.strip().startswith("[")
+    ]
+    if not normalized_lines:
+        return "Untitled Signal"
+
+    first_line_words = _clean_title_words(normalized_lines[0].split())
+    if first_line_words:
+        return " ".join(first_line_words[:6])[:80].strip() or "Untitled Signal"
+
+    all_words = _clean_title_words(" ".join(normalized_lines).split())
+    if not all_words:
+        return "Untitled Signal"
+
+    return " ".join(all_words[:6])[:80].strip() or "Untitled Signal"
+
+
+def _clean_title_words(words: list[str]) -> list[str]:
+    cleaned_words: list[str] = []
+
+    for word in words:
+        cleaned = "".join(
+            character for character in word if character.isalnum() or character in {"'", "-"}
+        ).strip("-'")
+        if cleaned:
+            cleaned_words.append(cleaned)
+
+    return cleaned_words

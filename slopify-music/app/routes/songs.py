@@ -18,6 +18,11 @@ from app.models import (
     SongVariantSelectionResponse,
 )
 from app.services.elevenlabs_music import ElevenLabsError, ElevenLabsMusicService
+from app.services.openai_text import (
+    OpenAITextError,
+    OpenAITextService,
+    derive_title_from_lyrics,
+)
 from app.services.supabase_songs import (
     SongNotFoundError,
     SongSessionNotFoundError,
@@ -48,6 +53,47 @@ def get_song_repository() -> SupabaseSongsRepository:
     )
 
 
+@lru_cache(maxsize=1)
+def get_optional_title_service() -> OpenAITextService | None:
+    settings = get_settings()
+    if not settings.openai_api_key:
+        return None
+    return OpenAITextService(api_key=settings.openai_api_key)
+
+
+def sanitize_title(title: str | None) -> str | None:
+    if not title:
+        return None
+
+    cleaned = title.strip().strip("\"'").strip()
+    if not cleaned:
+        return None
+
+    return cleaned[:200]
+
+
+def resolve_generated_title(
+    lyrics: str | None,
+    fallback_title: str | None,
+) -> str | None:
+    if lyrics and lyrics.strip():
+        title_service = get_optional_title_service()
+        if title_service is not None:
+            try:
+                return sanitize_title(
+                    title_service.generate_title_from_lyrics(
+                        lyrics=lyrics,
+                        model="gpt-5.4-mini",
+                    )
+                )
+            except OpenAITextError:
+                return sanitize_title(derive_title_from_lyrics(lyrics))
+
+        return sanitize_title(derive_title_from_lyrics(lyrics))
+
+    return sanitize_title(fallback_title)
+
+
 @router.post(
     "/generate",
     response_model=SongRecord,
@@ -58,6 +104,9 @@ def generate_song(
     repository: SupabaseSongsRepository = Depends(get_song_repository),
     music_service: ElevenLabsMusicService = Depends(get_music_service),
 ) -> SongRecord:
+    request = request.model_copy(
+        update={"title": resolve_generated_title(request.lyrics, request.title)}
+    )
     song = repository.create_song(request)
     try:
         generated_song = music_service.generate_song(request)
@@ -91,6 +140,9 @@ def generate_song_session(
     repository: SupabaseSongsRepository = Depends(get_song_repository),
     music_service: ElevenLabsMusicService = Depends(get_music_service),
 ) -> SongSessionDetail:
+    request = request.model_copy(
+        update={"title": resolve_generated_title(request.lyrics, request.title)}
+    )
     session = repository.create_song_session(request)
     for variant_index in range(1, request.candidate_count + 1):
         variant = repository.create_song_variant(session.id, request, variant_index)
