@@ -1,0 +1,12 @@
+[Unit]
+Description=Music gen for slopify
+After=network.target
+
+[Service]
+WorkingDirectory=%h/slopify/music
+ExecStart=%h/slopify/music/venv/bin/uvicorn app.main:app --reload
+Restart=on-failure
+Environment="PATH=%h/slopify/music/venv/bin:/usr/bin"
+
+[Install]
+WantedBy=default.target
