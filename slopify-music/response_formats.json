@@ -1,0 +1,163 @@
+{
+  "health": {
+    "endpoint": "GET /healthz",
+    "success": {
+      "status": "ok"
+    }
+  },
+  "prompt": {
+    "enhance_prompt": {
+      "endpoint": "POST /enhance-prompt",
+      "success": {
+        "enhanced_prompt": "Cinematic indie pop with warm analog synths, crisp drums, emotional lift in the chorus, and a polished festival-ready production.",
+        "model": "gpt-5.4-mini"
+      },
+      "errors": {
+        "provider_or_server_error": {
+          "detail": "OPENAI_API_KEY is not set."
+        }
+      }
+    },
+    "generate_lyrics": {
+      "endpoint": "POST /generate-lyrics",
+      "success": {
+        "lyrics": "[Verse 1]\nStreetlights fade into the blue\nI miss the last train back to you\nNeon rain across the glass\nA quiet city rushing past",
+        "model": "gpt-5.4-mini"
+      },
+      "errors": {
+        "provider_or_server_error": {
+          "detail": "Lyrics generation failed."
+        }
+      }
+    }
+  },
+  "songs": {
+    "generate": {
+      "endpoint": "POST /api/v1/songs/generate",
+      "success": {
+        "id": "6d1c8a0b-5fe4-4d84-a7a7-7e6e6e8f5d80",
+        "user_id": null,
+        "title": "Midnight Drive",
+        "prompt": "neon synthwave production with pulsing bass, gated drums, and a wide cinematic chorus",
+        "lyrics": "City lights blur in the rearview glow\nI keep chasing echoes down an empty road",
+        "composition_plan": null,
+        "model_id": "music_v1",
+        "music_length_ms": 90000,
+        "force_instrumental": false,
+        "respect_sections_durations": false,
+        "status": "completed",
+        "storage_bucket": "songs",
+        "storage_path": "songs/6d1c8a0b-5fe4-4d84-a7a7-7e6e6e8f5d80.mp3",
+        "image_storage_bucket": "song-images",
+        "image_storage_path": null,
+        "mime_type": "audio/mpeg",
+        "size_bytes": 1820441,
+        "error_message": null,
+        "created_at": "2026-04-25T12:00:00Z",
+        "updated_at": "2026-04-25T12:00:18Z"
+      },
+      "errors": {
+        "provider_error": {
+          "detail": {
+            "message": "ElevenLabs generation failed.",
+            "song_id": "6d1c8a0b-5fe4-4d84-a7a7-7e6e6e8f5d80",
+            "provider_error": "Upstream provider timeout."
+          }
+        },
+        "validation_error": {
+          "detail": [
+            {
+              "type": "value_error",
+              "loc": [
+                "body"
+              ],
+              "msg": "Value error, Provide exactly one of `prompt` or `composition_plan`.",
+              "input": {
+                "title": "Bad Request",
+                "prompt": "indie pop",
+                "composition_plan": {
+                  "style": "indie pop"
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "list": {
+      "endpoint": "GET /api/v1/songs",
+      "success": {
+        "items": [
+          {
+            "id": "6d1c8a0b-5fe4-4d84-a7a7-7e6e6e8f5d80",
+            "user_id": null,
+            "title": "Midnight Drive",
+            "prompt": "neon synthwave production with pulsing bass, gated drums, and a wide cinematic chorus",
+            "lyrics": "City lights blur in the rearview glow\nI keep chasing echoes down an empty road",
+            "composition_plan": null,
+            "model_id": "music_v1",
+            "music_length_ms": 90000,
+            "force_instrumental": false,
+            "respect_sections_durations": false,
+            "status": "completed",
+            "storage_bucket": "songs",
+            "storage_path": "songs/6d1c8a0b-5fe4-4d84-a7a7-7e6e6e8f5d80.mp3",
+            "image_storage_bucket": "song-images",
+            "image_storage_path": null,
+            "mime_type": "audio/mpeg",
+            "size_bytes": 1820441,
+            "error_message": null,
+            "created_at": "2026-04-25T12:00:00Z",
+            "updated_at": "2026-04-25T12:00:18Z"
+          }
+        ],
+        "total": 1
+      }
+    },
+    "get_one": {
+      "endpoint": "GET /api/v1/songs/{song_id}",
+      "success": {
+        "id": "6d1c8a0b-5fe4-4d84-a7a7-7e6e6e8f5d80",
+        "user_id": null,
+        "title": "Midnight Drive",
+        "prompt": "neon synthwave production with pulsing bass, gated drums, and a wide cinematic chorus",
+        "lyrics": "City lights blur in the rearview glow\nI keep chasing echoes down an empty road",
+        "composition_plan": null,
+        "model_id": "music_v1",
+        "music_length_ms": 90000,
+        "force_instrumental": false,
+        "respect_sections_durations": false,
+        "status": "completed",
+        "storage_bucket": "songs",
+        "storage_path": "songs/6d1c8a0b-5fe4-4d84-a7a7-7e6e6e8f5d80.mp3",
+        "image_storage_bucket": "song-images",
+        "image_storage_path": null,
+        "mime_type": "audio/mpeg",
+        "size_bytes": 1820441,
+        "error_message": null,
+        "created_at": "2026-04-25T12:00:00Z",
+        "updated_at": "2026-04-25T12:00:18Z"
+      },
+      "errors": {
+        "not_found": {
+          "detail": "Song 6d1c8a0b-5fe4-4d84-a7a7-7e6e6e8f5d80 was not found."
+        }
+      }
+    },
+    "audio": {
+      "endpoint": "GET /api/v1/songs/{song_id}/audio",
+      "success": {
+        "content_type": "audio/mpeg",
+        "body": "<binary audio stream>"
+      },
+      "errors": {
+        "not_found": {
+          "detail": "Song 6d1c8a0b-5fe4-4d84-a7a7-7e6e6e8f5d80 was not found."
+        },
+        "not_ready": {
+          "detail": "Song audio is not available yet."
+        }
+      }
+    }
+  }
+}
