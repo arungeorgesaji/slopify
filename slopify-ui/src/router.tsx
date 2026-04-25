@@ -4,6 +4,7 @@ import {
   createRouter,
 } from "@tanstack/react-router"
 import { SlopifyShell } from "@/components/slopify-shell"
+import { CreatePage } from "@/routes/create-page"
 import { HomePage } from "@/routes/home-page"
 
 const rootRoute = createRootRoute({
@@ -16,7 +17,13 @@ const indexRoute = createRoute({
   component: HomePage,
 })
 
-const routeTree = rootRoute.addChildren([indexRoute])
+const createRoutePage = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/create",
+  component: CreatePage,
+})
+
+const routeTree = rootRoute.addChildren([indexRoute, createRoutePage])
 
 export const router = createRouter({ routeTree })
 
