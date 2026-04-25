@@ -6,20 +6,14 @@ import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import { useSlopifyAppContext } from "@/components/slopify-app-context"
-import {
-  fetchTracks,
-  fakeDurationForTrack,
-  fakeVibeForTrack,
-  PLACEHOLDER_LYRICS,
-  TOPIC_FILTERS,
-  type Track,
-} from "@/lib/mock-tracks"
+import { fetchTracks, TOPIC_FILTERS, type Track } from "@/lib/tracks"
 
 export function HomePage() {
   const { search, setCurrentTrack } = useSlopifyAppContext()
   const deferredSearch = useDeferredValue(search)
-  const [activeFilter, setActiveFilter] =
-    useState<(typeof TOPIC_FILTERS)[number] | null>(null)
+  const [activeFilter, setActiveFilter] = useState<
+    (typeof TOPIC_FILTERS)[number] | null
+  >(null)
   const [selectedTrack, setSelectedTrack] = useState<Track | null>(null)
 
   const { data: tracks = [], isLoading } = useQuery({
@@ -35,7 +29,7 @@ export function HomePage() {
         track.title.toLowerCase().includes(normalizedSearch)
       const matchesFilter =
         activeFilter === null ||
-        fakeVibeForTrack(track.id).toLowerCase() === activeFilter.toLowerCase()
+        track.vibe.toLowerCase() === activeFilter.toLowerCase()
 
       return matchesSearch && matchesFilter
     })
@@ -72,18 +66,18 @@ export function HomePage() {
 
                 <div className="flex flex-wrap gap-2">
                   <Badge variant="outline" className="rounded-[3px] px-3 py-1">
-                    {fakeVibeForTrack(selectedTrack.id)}
+                    {selectedTrack.vibe}
                   </Badge>
                   <Badge variant="outline" className="rounded-[3px] px-3 py-1">
-                    generated track
+                    {selectedTrack.status}
                   </Badge>
                   <Badge variant="outline" className="rounded-[3px] px-3 py-1">
-                    {fakeDurationForTrack(selectedTrack.id)}
+                    {selectedTrack.duration}
                   </Badge>
                 </div>
 
                 <Button
-                  className="mt-1 h-11 w-full justify-center rounded-[4px] font-black uppercase tracking-[0.12em] sm:w-fit sm:px-7"
+                  className="mt-1 h-11 w-full justify-center rounded-[4px] font-black tracking-[0.12em] uppercase sm:w-fit sm:px-7"
                   onClick={() => setCurrentTrack(selectedTrack)}
                 >
                   <Play className="size-4 translate-x-px" />
@@ -94,7 +88,7 @@ export function HomePage() {
                   <div>
                     <p className="terminal-label">slop index</p>
                     <p className="mt-1 text-lg font-black text-acid">
-                      {selectedTrack.id.replace(/\D/g, "").padStart(2, "0")}.7
+                      {selectedTrack.id.slice(0, 8)}
                     </p>
                   </div>
                   <div>
@@ -115,7 +109,7 @@ export function HomePage() {
               <div className="hud-panel flex min-h-[320px] flex-col justify-between overflow-hidden rounded-[5px] bg-background/45 p-4 shadow-[0_24px_62px_rgba(0,0,0,0.4),0_0_36px_rgba(183,243,91,0.12)] lg:min-h-0">
                 <div className="flex items-center justify-between border-b border-border pb-3">
                   <span className="terminal-label">audio core</span>
-                  <span className="flex items-center gap-2 font-mono text-[10px] font-black uppercase tracking-[0.18em] text-cyan">
+                  <span className="flex items-center gap-2 font-mono text-[10px] font-black tracking-[0.18em] text-cyan uppercase">
                     <span className="status-dot" />
                     live feed
                   </span>
@@ -140,7 +134,7 @@ export function HomePage() {
                 </div>
                 <div className="flex items-center justify-between border-t border-border pt-3">
                   <span className="slop-stamp">visual feed</span>
-                  <span className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+                  <span className="font-mono text-[10px] font-bold tracking-[0.18em] text-muted-foreground uppercase">
                     output monitor
                   </span>
                 </div>
@@ -158,18 +152,20 @@ export function HomePage() {
                 </div>
                 <div className="max-h-[240px] overflow-y-auto px-4 py-4 sm:px-5 lg:h-full lg:max-h-none">
                   <div className="slop-sheet space-y-6 rounded-[3px] border border-border-strong px-5 py-5 shadow-[0_18px_42px_rgba(0,0,0,0.32),0_0_26px_rgba(183,214,106,0.06)]">
-                    {PLACEHOLDER_LYRICS.split("\n\n").map((section) => (
-                      <div key={section} className="space-y-2">
-                        {section.split("\n").map((line) => (
-                          <p
-                            key={line}
-                            className="max-w-3xl text-base font-semibold leading-8 text-foreground sm:text-lg"
-                          >
-                            {line}
-                          </p>
-                        ))}
-                      </div>
-                    ))}
+                    {(selectedTrack.lyrics ?? selectedTrack.prompt)
+                      .split("\n\n")
+                      .map((section) => (
+                        <div key={section} className="space-y-2">
+                          {section.split("\n").map((line) => (
+                            <p
+                              key={line}
+                              className="max-w-3xl text-base leading-8 font-semibold text-foreground sm:text-lg"
+                            >
+                              {line}
+                            </p>
+                          ))}
+                        </div>
+                      ))}
                   </div>
                 </div>
               </div>
@@ -181,15 +177,18 @@ export function HomePage() {
           <div className="hud-panel overflow-hidden rounded-[4px] px-5 py-5 sm:px-6">
             <div className="relative z-10 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <p className="terminal-label">generation node / ai sound terminal</p>
+                <p className="terminal-label">
+                  generation node / ai sound terminal
+                </p>
                 <h1 className="text-3xl font-black tracking-[-0.03em] text-foreground sm:text-5xl">
                   Slopify audio console
                 </h1>
                 <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-                  A futuristic sound lab for synthetic tracks, strange hooks, and broadcast-ready slop.
+                  A futuristic sound lab for synthetic tracks, strange hooks,
+                  and broadcast-ready slop.
                 </p>
               </div>
-              <div className="flex items-center gap-2 rounded-md border border-border bg-background/45 px-3 py-2 font-mono text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground shadow-[inset_0_1px_0_rgba(238,244,237,0.05)]">
+              <div className="flex items-center gap-2 rounded-md border border-border bg-background/45 px-3 py-2 font-mono text-xs font-bold tracking-[0.18em] text-muted-foreground uppercase shadow-[inset_0_1px_0_rgba(238,244,237,0.05)]">
                 <span className="status-dot" />
                 signal ready
               </div>
@@ -212,7 +211,7 @@ export function HomePage() {
                   >
                     <Badge
                       variant={isActive ? "default" : "outline"}
-                      className="h-9 rounded-[3px] px-4 font-mono text-sm uppercase tracking-wide"
+                      className="h-9 rounded-[3px] px-4 font-mono text-sm tracking-wide uppercase"
                     >
                       {filter}
                     </Badge>
@@ -235,7 +234,7 @@ export function HomePage() {
             </div>
           ) : (
             <div className="hud-panel overflow-hidden rounded-[4px]">
-              <div className="hidden grid-cols-[minmax(0,1fr)_64px_160px_144px_96px] border-b border-border bg-muted/25 px-6 py-3 font-mono text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground md:grid">
+              <div className="hidden grid-cols-[minmax(0,1fr)_64px_160px_144px_96px] border-b border-border bg-muted/25 px-6 py-3 font-mono text-xs font-bold tracking-[0.18em] text-muted-foreground uppercase md:grid">
                 <span>Output Queue</span>
                 <span>Play</span>
                 <span>Signal Type</span>
@@ -246,7 +245,7 @@ export function HomePage() {
                 {visibleTracks.map((track) => (
                   <div
                     key={track.id}
-                    className="grid grid-cols-[minmax(0,1fr)_44px] items-center gap-4 border-b border-border px-4 py-3 transition-all hover:bg-acid/10 hover:shadow-[inset_3px_0_0_var(--acid)] last:border-b-0 md:grid-cols-[minmax(0,1fr)_64px_160px_144px_96px] md:px-6"
+                    className="grid grid-cols-[minmax(0,1fr)_44px] items-center gap-4 border-b border-border px-4 py-3 transition-all last:border-b-0 hover:bg-acid/10 hover:shadow-[inset_3px_0_0_var(--acid)] md:grid-cols-[minmax(0,1fr)_64px_160px_144px_96px] md:px-6"
                   >
                     <button
                       type="button"
@@ -266,7 +265,7 @@ export function HomePage() {
                           {track.title}
                         </p>
                         <p className="terminal-label md:hidden">
-                          {fakeVibeForTrack(track.id)} / {fakeDurationForTrack(track.id)}
+                          {track.vibe} / {track.duration}
                         </p>
                       </div>
                     </button>
@@ -279,14 +278,14 @@ export function HomePage() {
                       <Play className="size-4 translate-x-px" />
                     </button>
                     <span className="hidden text-sm text-muted-foreground md:block">
-                      {fakeVibeForTrack(track.id)}
+                      {track.vibe}
                     </span>
                     <span className="hidden text-sm text-muted-foreground md:block">
-                      --
+                      {track.dateAdded}
                     </span>
                     <div className="hidden min-w-0 md:block">
                       <span className="block text-right text-sm text-muted-foreground">
-                        {fakeDurationForTrack(track.id)}
+                        {track.duration}
                       </span>
                     </div>
                   </div>

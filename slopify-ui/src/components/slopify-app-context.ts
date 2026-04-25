@@ -1,11 +1,11 @@
 import { createContext, useContext } from "react"
 import type { Dispatch, SetStateAction } from "react"
-import type { Track } from "@/lib/mock-tracks"
+import type { Track } from "@/lib/tracks"
 
 type SlopifyAppContextValue = {
-  currentTrack: Track
+  currentTrack: Track | null
   search: string
-  setCurrentTrack: Dispatch<SetStateAction<Track>>
+  setCurrentTrack: Dispatch<SetStateAction<Track | null>>
 }
 
 export const SlopifyAppContext = createContext<SlopifyAppContextValue | null>(

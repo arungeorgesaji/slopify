@@ -1,23 +1,24 @@
 import { useState, type FormEvent } from "react"
+import { useQueryClient } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
 import { Sparkles } from "lucide-react"
+import { buildApiUrl } from "@/lib/api"
 import { API_ENDPOINTS } from "@/lib/constants"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 
 const STARTER_PROMPT = `I'm coming down after a packed work week and driving alone through the city at night.
 I want something reflective but still uplifting, with warm synths, a steady beat, and a chorus that feels hopeful.`
-const BACKEND_BASE_URL = import.meta.env.VITE_BACKEND_BASE_URL?.trim() ?? ""
-const ENHANCE_PROMPT_URL = buildApiUrl(
-  BACKEND_BASE_URL,
-  API_ENDPOINTS.enhancePrompt
-)
+const ENHANCE_PROMPT_URL = buildApiUrl(API_ENDPOINTS.enhancePrompt)
+const GENERATE_SONG_URL = buildApiUrl(API_ENDPOINTS.generateSong)
 
 export function CreatePage() {
   const [prompt, setPrompt] = useState("")
   const [feedback, setFeedback] = useState<string | null>(null)
   const [isEnhancing, setIsEnhancing] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
 
   const handleEnhance = async () => {
     setIsEnhancing(true)
@@ -47,14 +48,34 @@ export function CreatePage() {
     }
   }
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
-    setFeedback(
-      prompt.trim().length === 0
-        ? "Write a prompt first. Submit is still a placeholder for now."
-        : "Submit is a dummy action for now. The prompt is ready, but generation is not wired yet."
-    )
+    if (prompt.trim().length === 0) {
+      setFeedback("Write a prompt first.")
+      return
+    }
+
+    if (!GENERATE_SONG_URL) {
+      setFeedback("Backend URL is missing. Add VITE_BACKEND_BASE_URL to env.")
+      return
+    }
+
+    setIsSubmitting(true)
+
+    try {
+      await generateSong(prompt)
+      await queryClient.invalidateQueries({ queryKey: ["tracks"] })
+      setFeedback("Song generation started.")
+      void navigate({ to: "/app" })
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown generation error"
+
+      setFeedback(`Song generation failed: ${errorMessage}`)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -88,7 +109,7 @@ export function CreatePage() {
           <div className="hud-panel w-full overflow-hidden rounded-[6px] p-3">
             <div className="flex items-center justify-between border-b border-border px-3 pb-3">
               <span className="terminal-label">audio request input</span>
-              <span className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-cyan">
+              <span className="font-mono text-[10px] font-bold tracking-[0.18em] text-cyan uppercase">
                 signal draft
               </span>
             </div>
@@ -118,14 +139,15 @@ export function CreatePage() {
                 type="submit"
                 size="lg"
                 className="h-11 rounded-[3px] px-7"
+                disabled={isSubmitting}
               >
-                Submit Signal
+                {isSubmitting ? "Submitting..." : "Submit Signal"}
               </Button>
             </div>
           </div>
 
           {feedback ? (
-            <div className="rounded-[3px] border border-border bg-background/70 px-4 py-2 text-center font-mono text-xs font-bold uppercase tracking-[0.08em] text-muted-foreground shadow-[inset_0_1px_0_rgba(238,244,237,0.04)]">
+            <div className="rounded-[3px] border border-border bg-background/70 px-4 py-2 text-center font-mono text-xs font-bold tracking-[0.08em] text-muted-foreground uppercase shadow-[inset_0_1px_0_rgba(238,244,237,0.04)]">
               {feedback}
             </div>
           ) : null}
@@ -143,14 +165,6 @@ function buildEnhancedPrompt(prompt: string) {
   }
 
   return buildStructuredPrompt(normalizedPrompt)
-}
-
-function buildApiUrl(baseUrl: string, endpoint: string) {
-  if (!baseUrl) {
-    return ""
-  }
-
-  return `${baseUrl.replace(/\/+$/, "")}/${endpoint.replace(/^\/+/, "")}`
 }
 
 async function enhancePromptWithBackend(prompt: string) {
@@ -176,6 +190,50 @@ async function enhancePromptWithBackend(prompt: string) {
   }
 
   return enhancedPrompt
+}
+
+async function generateSong(prompt: string) {
+  const response = await fetch(GENERATE_SONG_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify({
+      title: deriveTitle(prompt),
+      prompt,
+      music_length_ms: 90000,
+      model_id: "music_v1",
+      force_instrumental: false,
+      respect_sections_durations: false,
+      user_id: null,
+    }),
+  })
+
+  if (!response.ok) {
+    const responseText = await response.text()
+    throw new Error(
+      `HTTP ${response.status}: ${responseText.slice(0, 140) || "Request failed"}`
+    )
+  }
+}
+
+function deriveTitle(prompt: string) {
+  const words = prompt
+    .trim()
+    .replace(/\s+/g, " ")
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 5)
+
+  if (words.length === 0) {
+    return "Untitled Signal"
+  }
+
+  return words
+    .join(" ")
+    .replace(/[^\w\s'-]/g, "")
+    .trim()
 }
 
 function extractEnhancedPrompt(payload: Record<string, unknown>) {

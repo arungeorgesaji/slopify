@@ -1,26 +1,80 @@
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Pause, Play, SkipBack, SkipForward, Volume2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Slider } from "@/components/ui/slider"
 import { useSlopifyAppContext } from "@/components/slopify-app-context"
-import { fakeDurationForTrack } from "@/lib/mock-tracks"
 
 export function MusicPlayer() {
   const { currentTrack } = useSlopifyAppContext()
+  const audioRef = useRef<HTMLAudioElement | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
-  const [progress, setProgress] = useState([38])
+  const [progress, setProgress] = useState([0])
   const [volume, setVolume] = useState([72])
 
+  useEffect(() => {
+    setIsPlaying(false)
+    setProgress([0])
+    audioRef.current?.pause()
+    audioRef.current?.load()
+  }, [currentTrack])
+
+  useEffect(() => {
+    if (!audioRef.current) {
+      return
+    }
+
+    audioRef.current.volume = volume[0] / 100
+  }, [volume])
+
   const handleProgressChange = (value: number | readonly number[]) => {
-    setProgress(Array.isArray(value) ? [...value] : [value])
+    const nextProgress = Array.isArray(value) ? value[0] : value
+
+    setProgress([nextProgress])
+
+    if (audioRef.current && Number.isFinite(audioRef.current.duration)) {
+      audioRef.current.currentTime =
+        audioRef.current.duration * (nextProgress / 100)
+    }
   }
 
   const handleVolumeChange = (value: number | readonly number[]) => {
     setVolume(Array.isArray(value) ? [...value] : [value])
   }
 
+  const handlePlayToggle = () => {
+    if (!audioRef.current || !currentTrack?.audioUrl) {
+      return
+    }
+
+    if (isPlaying) {
+      audioRef.current.pause()
+      setIsPlaying(false)
+      return
+    }
+
+    void audioRef.current.play().then(() => setIsPlaying(true))
+  }
+
+  const handleTimeUpdate = () => {
+    if (!audioRef.current || !Number.isFinite(audioRef.current.duration)) {
+      return
+    }
+
+    setProgress([
+      (audioRef.current.currentTime / audioRef.current.duration) * 100,
+    ])
+  }
+
   return (
     <footer className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/84 text-foreground shadow-[0_-18px_62px_rgba(0,0,0,0.5)] backdrop-blur-xl">
+      {currentTrack?.audioUrl ? (
+        <audio
+          ref={audioRef}
+          src={currentTrack.audioUrl}
+          onEnded={() => setIsPlaying(false)}
+          onTimeUpdate={handleTimeUpdate}
+        />
+      ) : null}
       <div className="mx-auto grid w-full max-w-7xl grid-cols-[minmax(0,1fr)_auto] gap-3 px-4 py-3 sm:px-6 lg:grid-cols-[1fr_auto_1fr] lg:items-center lg:px-8">
         <div className="min-w-0 rounded-[3px] border border-border bg-surface/80 px-4 py-3 shadow-[inset_0_1px_0_rgba(238,244,237,0.05)]">
           <div className="mb-1 flex items-center gap-2">
@@ -28,7 +82,7 @@ export function MusicPlayer() {
             <span className="terminal-label">signal ready</span>
           </div>
           <p className="truncate text-sm font-semibold text-foreground">
-            {currentTrack.title}
+            {currentTrack?.title ?? "No track selected"}
           </p>
         </div>
 
@@ -46,7 +100,8 @@ export function MusicPlayer() {
               size="icon"
               className="size-10 rounded-md"
               aria-label={isPlaying ? "Pause" : "Play"}
-              onClick={() => setIsPlaying((current) => !current)}
+              onClick={handlePlayToggle}
+              disabled={!currentTrack?.audioUrl}
             >
               {isPlaying ? (
                 <Pause className="size-4" />
@@ -65,19 +120,24 @@ export function MusicPlayer() {
           </div>
 
           <div className="flex w-full items-center gap-3 font-mono text-[11px] text-muted-foreground">
-            <span>1:12</span>
+            <span>
+              {formatProgressTime(audioRef.current?.currentTime ?? 0)}
+            </span>
             <Slider
               value={progress}
               onValueChange={handleProgressChange}
               aria-label="Track progress"
               className="[&_[data-slot=slider-range]]:bg-acid [&_[data-slot=slider-thumb]]:border-acid/80 [&_[data-slot=slider-thumb]]:bg-background [&_[data-slot=slider-thumb]]:shadow-[0_0_14px_rgba(183,214,106,0.3)] [&_[data-slot=slider-track]]:bg-acid/16"
             />
-            <span>{fakeDurationForTrack(currentTrack.id)}</span>
+            <span>{currentTrack?.duration ?? "--"}</span>
           </div>
         </div>
 
         <div className="flex items-center gap-3 rounded-[3px] border border-border bg-surface/80 px-3 py-3 shadow-[inset_0_1px_0_rgba(238,244,237,0.05)] lg:justify-self-end lg:px-4">
-          <div className="hidden h-6 items-end gap-0.5 sm:flex" aria-hidden="true">
+          <div
+            className="hidden h-6 items-end gap-0.5 sm:flex"
+            aria-hidden="true"
+          >
             {[0, 1, 2, 3].map((bar) => (
               <span
                 key={bar}
@@ -102,4 +162,16 @@ export function MusicPlayer() {
       </div>
     </footer>
   )
+}
+
+function formatProgressTime(seconds: number) {
+  if (!Number.isFinite(seconds) || seconds <= 0) {
+    return "0:00"
+  }
+
+  const wholeSeconds = Math.floor(seconds)
+  const minutes = Math.floor(wholeSeconds / 60)
+  const remainingSeconds = wholeSeconds % 60
+
+  return `${minutes}:${String(remainingSeconds).padStart(2, "0")}`
 }

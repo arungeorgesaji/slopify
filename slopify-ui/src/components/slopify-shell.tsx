@@ -4,11 +4,11 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { MusicPlayer } from "@/components/music-player"
 import { SlopifyAppContext } from "@/components/slopify-app-context"
-import { DEFAULT_TRACK } from "@/lib/mock-tracks"
+import type { Track } from "@/lib/tracks"
 
 export function SlopifyShell() {
   const [search, setSearch] = useState("")
-  const [currentTrack, setCurrentTrack] = useState(DEFAULT_TRACK)
+  const [currentTrack, setCurrentTrack] = useState<Track | null>(null)
   const desktopSearchRef = useRef<HTMLInputElement | null>(null)
   const mobileSearchRef = useRef<HTMLInputElement | null>(null)
   const navigate = useNavigate()
@@ -55,7 +55,7 @@ export function SlopifyShell() {
         value={{ currentTrack, search, setCurrentTrack }}
       >
         <div className="min-h-svh bg-transparent">
-          <main className="w-full px-4 pb-10 pt-6 sm:px-6 lg:px-8">
+          <main className="w-full px-4 pt-6 pb-10 sm:px-6 lg:px-8">
             <Outlet />
           </main>
         </div>
@@ -98,12 +98,12 @@ export function SlopifyShell() {
             <div className="flex items-center gap-2 sm:gap-3">
               <Button
                 variant="secondary"
-                className="h-10 rounded-md px-3 text-xs uppercase tracking-wide sm:px-5 sm:text-sm"
+                className="h-10 rounded-md px-3 text-xs tracking-wide uppercase sm:px-5 sm:text-sm"
               >
                 Surprise Me
               </Button>
               <Button
-                className="h-10 rounded-md px-4 text-xs uppercase tracking-wide sm:px-5 sm:text-sm"
+                className="h-10 rounded-md px-4 text-xs tracking-wide uppercase sm:px-5 sm:text-sm"
                 onClick={() => navigate({ to: "/create" })}
               >
                 Create
@@ -122,7 +122,7 @@ export function SlopifyShell() {
           </div>
         </header>
 
-        <main className="w-full px-4 pb-56 pt-28 sm:px-6 lg:px-8">
+        <main className="w-full px-4 pt-28 pb-56 sm:px-6 lg:px-8">
           <Outlet />
         </main>
 
