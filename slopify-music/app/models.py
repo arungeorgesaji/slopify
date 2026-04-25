@@ -12,7 +12,7 @@ class SongGenerationRequest(BaseModel):
     prompt: str | None = Field(default=None, min_length=3, max_length=2000)
     lyrics: str | None = Field(default=None, min_length=1, max_length=10000)
     composition_plan: dict[str, Any] | None = None
-    music_length_ms: int | None = Field(default=None, ge=3000, le=600000)
+    music_length_ms: int | None = Field(default=40000, ge=3000, le=600000)
     model_id: str = Field(default="music_v1", max_length=100)
     force_instrumental: bool = False
     respect_sections_durations: bool = False
