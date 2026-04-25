@@ -35,7 +35,35 @@
             },
             "description": "Health check endpoint."
           },
-          "response": []
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/healthz",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "healthz"
+                  ]
+                },
+                "description": "Health check endpoint."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": \"ok\"\n}"
+            }
+          ]
         }
       ]
     },
@@ -67,7 +95,80 @@
             },
             "description": "Enhance a raw music idea into a better generation prompt."
           },
-          "response": []
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"prompt\": \"cinematic indie pop with warm synths and a big chorus\",\n  \"model\": \"gpt-5.4-mini\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/enhance-prompt",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "enhance-prompt"
+                  ]
+                },
+                "description": "Enhance a raw music idea into a better generation prompt."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"enhanced_prompt\": \"Cinematic indie pop with warm analog synths, crisp drums, emotional lift in the chorus, and a polished festival-ready production.\",\n  \"model\": \"gpt-5.4-mini\"\n}"
+            },
+            {
+              "name": "500 Provider Or Server Error",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"prompt\": \"cinematic indie pop with warm synths and a big chorus\",\n  \"model\": \"gpt-5.4-mini\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/enhance-prompt",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "enhance-prompt"
+                  ]
+                },
+                "description": "Enhance a raw music idea into a better generation prompt."
+              },
+              "status": "Internal Server Error",
+              "code": 500,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"detail\": \"OPENAI_API_KEY is not set.\"\n}"
+            }
+          ]
         },
         {
           "name": "POST /generate-lyrics",
@@ -94,7 +195,80 @@
             },
             "description": "Generate song lyrics from a user prompt."
           },
-          "response": []
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"prompt\": \"Write melancholic synthwave lyrics about missing the last train home\",\n  \"model\": \"gpt-5.4-mini\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/generate-lyrics",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "generate-lyrics"
+                  ]
+                },
+                "description": "Generate song lyrics from a user prompt."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"lyrics\": \"[Verse 1]\\nStreetlights fade into the blue\\nI miss the last train back to you\\nNeon rain across the glass\\nA quiet city rushing past\",\n  \"model\": \"gpt-5.4-mini\"\n}"
+            },
+            {
+              "name": "500 Provider Or Server Error",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"prompt\": \"Write melancholic synthwave lyrics about missing the last train home\",\n  \"model\": \"gpt-5.4-mini\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/generate-lyrics",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "generate-lyrics"
+                  ]
+                },
+                "description": "Generate song lyrics from a user prompt."
+              },
+              "status": "Internal Server Error",
+              "code": 500,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"detail\": \"Lyrics generation failed.\"\n}"
+            }
+          ]
         }
       ]
     },
@@ -129,7 +303,125 @@
             },
             "description": "Generate a song from a prompt, optionally with separate `lyrics`. Provide exactly one of `prompt` or `composition_plan`."
           },
-          "response": []
+          "response": [
+            {
+              "name": "201 Created",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"title\": \"Midnight Drive\",\n  \"prompt\": \"neon synthwave production with pulsing bass, gated drums, and a wide cinematic chorus\",\n  \"lyrics\": \"City lights blur in the rearview glow\\nI keep chasing echoes down an empty road\\nEvery signal fades but I still hear your name\\nMidnight keeps on driving me through the same old flame\",\n  \"music_length_ms\": 90000,\n  \"model_id\": \"music_v1\",\n  \"force_instrumental\": false,\n  \"respect_sections_durations\": false,\n  \"user_id\": null\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/songs/generate",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "songs",
+                    "generate"
+                  ]
+                },
+                "description": "Generate a song from a prompt, optionally with separate `lyrics`. Provide exactly one of `prompt` or `composition_plan`."
+              },
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"id\": \"6d1c8a0b-5fe4-4d84-a7a7-7e6e6e8f5d80\",\n  \"user_id\": null,\n  \"title\": \"Midnight Drive\",\n  \"prompt\": \"neon synthwave production with pulsing bass, gated drums, and a wide cinematic chorus\",\n  \"lyrics\": \"City lights blur in the rearview glow\\nI keep chasing echoes down an empty road\",\n  \"composition_plan\": null,\n  \"model_id\": \"music_v1\",\n  \"music_length_ms\": 90000,\n  \"force_instrumental\": false,\n  \"respect_sections_durations\": false,\n  \"status\": \"completed\",\n  \"storage_bucket\": \"songs\",\n  \"storage_path\": \"songs/6d1c8a0b-5fe4-4d84-a7a7-7e6e6e8f5d80.mp3\",\n  \"image_storage_bucket\": \"song-images\",\n  \"image_storage_path\": null,\n  \"mime_type\": \"audio/mpeg\",\n  \"size_bytes\": 1820441,\n  \"error_message\": null,\n  \"created_at\": \"2026-04-25T12:00:00Z\",\n  \"updated_at\": \"2026-04-25T12:00:18Z\"\n}"
+            },
+            {
+              "name": "502 Provider Error",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"title\": \"Midnight Drive\",\n  \"prompt\": \"neon synthwave production with pulsing bass, gated drums, and a wide cinematic chorus\",\n  \"lyrics\": \"City lights blur in the rearview glow\\nI keep chasing echoes down an empty road\\nEvery signal fades but I still hear your name\\nMidnight keeps on driving me through the same old flame\",\n  \"music_length_ms\": 90000,\n  \"model_id\": \"music_v1\",\n  \"force_instrumental\": false,\n  \"respect_sections_durations\": false,\n  \"user_id\": null\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/songs/generate",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "songs",
+                    "generate"
+                  ]
+                },
+                "description": "Generate a song from a prompt, optionally with separate `lyrics`. Provide exactly one of `prompt` or `composition_plan`."
+              },
+              "status": "Bad Gateway",
+              "code": 502,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"detail\": {\n    \"message\": \"ElevenLabs generation failed.\",\n    \"song_id\": \"6d1c8a0b-5fe4-4d84-a7a7-7e6e6e8f5d80\",\n    \"provider_error\": \"Upstream provider timeout.\"\n  }\n}"
+            },
+            {
+              "name": "422 Validation Error",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"title\": \"Midnight Drive\",\n  \"prompt\": \"neon synthwave production with pulsing bass, gated drums, and a wide cinematic chorus\",\n  \"lyrics\": \"City lights blur in the rearview glow\\nI keep chasing echoes down an empty road\\nEvery signal fades but I still hear your name\\nMidnight keeps on driving me through the same old flame\",\n  \"music_length_ms\": 90000,\n  \"model_id\": \"music_v1\",\n  \"force_instrumental\": false,\n  \"respect_sections_durations\": false,\n  \"user_id\": null\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/songs/generate",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "songs",
+                    "generate"
+                  ]
+                },
+                "description": "Generate a song from a prompt, optionally with separate `lyrics`. Provide exactly one of `prompt` or `composition_plan`."
+              },
+              "status": "Unprocessable Entity",
+              "code": 422,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"detail\": [\n    {\n      \"type\": \"value_error\",\n      \"loc\": [\n        \"body\"\n      ],\n      \"msg\": \"Value error, Provide exactly one of `prompt` or `composition_plan`.\",\n      \"input\": {\n        \"title\": \"Bad Request\",\n        \"prompt\": \"indie pop\",\n        \"composition_plan\": {\n          \"style\": \"indie pop\"\n        }\n      }\n    }\n  ]\n}"
+            }
+          ]
         },
         {
           "name": "POST /api/v1/songs/generate (composition_plan)",
@@ -159,7 +451,86 @@
             },
             "description": "Generate a song from a composition plan. Do not send `force_instrumental` with this shape."
           },
-          "response": []
+          "response": [
+            {
+              "name": "201 Created",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"title\": \"Sunrise Build\",\n  \"composition_plan\": {\n    \"style\": \"uplifting progressive house\",\n    \"sections\": [\n      {\n        \"name\": \"intro\",\n        \"duration_ms\": 15000,\n        \"description\": \"filtered pads and soft kick\"\n      },\n      {\n        \"name\": \"drop\",\n        \"duration_ms\": 30000,\n        \"description\": \"wide supersaws and energetic bass\"\n      }\n    ]\n  },\n  \"music_length_ms\": 60000,\n  \"model_id\": \"music_v1\",\n  \"respect_sections_durations\": true,\n  \"user_id\": null\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/songs/generate",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "songs",
+                    "generate"
+                  ]
+                },
+                "description": "Generate a song from a composition plan. Do not send `force_instrumental` with this shape."
+              },
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"id\": \"6d1c8a0b-5fe4-4d84-a7a7-7e6e6e8f5d80\",\n  \"user_id\": null,\n  \"title\": \"Midnight Drive\",\n  \"prompt\": null,\n  \"lyrics\": null,\n  \"composition_plan\": {\n    \"style\": \"uplifting progressive house\",\n    \"sections\": [\n      {\n        \"name\": \"intro\",\n        \"duration_ms\": 15000,\n        \"description\": \"filtered pads and soft kick\"\n      },\n      {\n        \"name\": \"drop\",\n        \"duration_ms\": 30000,\n        \"description\": \"wide supersaws and energetic bass\"\n      }\n    ]\n  },\n  \"model_id\": \"music_v1\",\n  \"music_length_ms\": 60000,\n  \"force_instrumental\": false,\n  \"respect_sections_durations\": true,\n  \"status\": \"completed\",\n  \"storage_bucket\": \"songs\",\n  \"storage_path\": \"songs/6d1c8a0b-5fe4-4d84-a7a7-7e6e6e8f5d80.mp3\",\n  \"image_storage_bucket\": \"song-images\",\n  \"image_storage_path\": null,\n  \"mime_type\": \"audio/mpeg\",\n  \"size_bytes\": 1820441,\n  \"error_message\": null,\n  \"created_at\": \"2026-04-25T12:00:00Z\",\n  \"updated_at\": \"2026-04-25T12:00:18Z\"\n}"
+            },
+            {
+              "name": "422 Validation Error",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"title\": \"Sunrise Build\",\n  \"composition_plan\": {\n    \"style\": \"uplifting progressive house\",\n    \"sections\": [\n      {\n        \"name\": \"intro\",\n        \"duration_ms\": 15000,\n        \"description\": \"filtered pads and soft kick\"\n      },\n      {\n        \"name\": \"drop\",\n        \"duration_ms\": 30000,\n        \"description\": \"wide supersaws and energetic bass\"\n      }\n    ]\n  },\n  \"music_length_ms\": 60000,\n  \"model_id\": \"music_v1\",\n  \"respect_sections_durations\": true,\n  \"user_id\": null\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/songs/generate",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "songs",
+                    "generate"
+                  ]
+                },
+                "description": "Generate a song from a composition plan. Do not send `force_instrumental` with this shape."
+              },
+              "status": "Unprocessable Entity",
+              "code": 422,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"detail\": [\n    {\n      \"type\": \"value_error\",\n      \"loc\": [\n        \"body\"\n      ],\n      \"msg\": \"Value error, `force_instrumental` is only supported when generating from `prompt`.\",\n      \"input\": {\n        \"title\": \"Bad Request\",\n        \"composition_plan\": {\n          \"style\": \"progressive house\"\n        },\n        \"force_instrumental\": true\n      }\n    }\n  ]\n}"
+            }
+          ]
         },
         {
           "name": "GET /api/v1/songs",
@@ -189,7 +560,47 @@
             },
             "description": "List songs with pagination. Limit range is 1-100."
           },
-          "response": []
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/songs?limit=20&offset=0",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "songs"
+                  ],
+                  "query": [
+                    {
+                      "key": "limit",
+                      "value": "20"
+                    },
+                    {
+                      "key": "offset",
+                      "value": "0"
+                    }
+                  ]
+                },
+                "description": "List songs with pagination. Limit range is 1-100."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"items\": [\n    {\n      \"id\": \"6d1c8a0b-5fe4-4d84-a7a7-7e6e6e8f5d80\",\n      \"user_id\": null,\n      \"title\": \"Midnight Drive\",\n      \"prompt\": \"neon synthwave production with pulsing bass, gated drums, and a wide cinematic chorus\",\n      \"lyrics\": \"City lights blur in the rearview glow\\nI keep chasing echoes down an empty road\",\n      \"composition_plan\": null,\n      \"model_id\": \"music_v1\",\n      \"music_length_ms\": 90000,\n      \"force_instrumental\": false,\n      \"respect_sections_durations\": false,\n      \"status\": \"completed\",\n      \"storage_bucket\": \"songs\",\n      \"storage_path\": \"songs/6d1c8a0b-5fe4-4d84-a7a7-7e6e6e8f5d80.mp3\",\n      \"image_storage_bucket\": \"song-images\",\n      \"image_storage_path\": null,\n      \"mime_type\": \"audio/mpeg\",\n      \"size_bytes\": 1820441,\n      \"error_message\": null,\n      \"created_at\": \"2026-04-25T12:00:00Z\",\n      \"updated_at\": \"2026-04-25T12:00:18Z\"\n    }\n  ],\n  \"total\": 1\n}"
+            }
+          ]
         },
         {
           "name": "GET /api/v1/songs/{song_id}",
@@ -210,7 +621,68 @@
             },
             "description": "Fetch a single song record by UUID."
           },
-          "response": []
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/songs/{{songId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "songs",
+                    "{{songId}}"
+                  ]
+                },
+                "description": "Fetch a single song record by UUID."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"id\": \"6d1c8a0b-5fe4-4d84-a7a7-7e6e6e8f5d80\",\n  \"user_id\": null,\n  \"title\": \"Midnight Drive\",\n  \"prompt\": \"neon synthwave production with pulsing bass, gated drums, and a wide cinematic chorus\",\n  \"lyrics\": \"City lights blur in the rearview glow\\nI keep chasing echoes down an empty road\",\n  \"composition_plan\": null,\n  \"model_id\": \"music_v1\",\n  \"music_length_ms\": 90000,\n  \"force_instrumental\": false,\n  \"respect_sections_durations\": false,\n  \"status\": \"completed\",\n  \"storage_bucket\": \"songs\",\n  \"storage_path\": \"songs/6d1c8a0b-5fe4-4d84-a7a7-7e6e6e8f5d80.mp3\",\n  \"image_storage_bucket\": \"song-images\",\n  \"image_storage_path\": null,\n  \"mime_type\": \"audio/mpeg\",\n  \"size_bytes\": 1820441,\n  \"error_message\": null,\n  \"created_at\": \"2026-04-25T12:00:00Z\",\n  \"updated_at\": \"2026-04-25T12:00:18Z\"\n}"
+            },
+            {
+              "name": "404 Not Found",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/songs/{{songId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "songs",
+                    "{{songId}}"
+                  ]
+                },
+                "description": "Fetch a single song record by UUID."
+              },
+              "status": "Not Found",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"detail\": \"Song 6d1c8a0b-5fe4-4d84-a7a7-7e6e6e8f5d80 was not found.\"\n}"
+            }
+          ]
         },
         {
           "name": "GET /api/v1/songs/{song_id}/audio",
@@ -232,7 +704,101 @@
             },
             "description": "Stream generated song audio for a completed song."
           },
-          "response": []
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/songs/{{songId}}/audio",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "songs",
+                    "{{songId}}",
+                    "audio"
+                  ]
+                },
+                "description": "Stream generated song audio for a completed song."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "text",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "audio/mpeg"
+                }
+              ],
+              "body": "<binary audio stream>"
+            },
+            {
+              "name": "404 Not Found",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/songs/{{songId}}/audio",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "songs",
+                    "{{songId}}",
+                    "audio"
+                  ]
+                },
+                "description": "Stream generated song audio for a completed song."
+              },
+              "status": "Not Found",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"detail\": \"Song 6d1c8a0b-5fe4-4d84-a7a7-7e6e6e8f5d80 was not found.\"\n}"
+            },
+            {
+              "name": "409 Not Ready",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/songs/{{songId}}/audio",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "songs",
+                    "{{songId}}",
+                    "audio"
+                  ]
+                },
+                "description": "Stream generated song audio for a completed song."
+              },
+              "status": "Conflict",
+              "code": 409,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"detail\": \"Song audio is not available yet.\"\n}"
+            }
+          ]
         }
       ]
     }
