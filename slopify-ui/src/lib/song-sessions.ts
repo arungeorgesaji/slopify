@@ -3,7 +3,6 @@ import { API_ENDPOINTS } from "@/lib/constants"
 
 export const MAX_PROMPT_LENGTH = 2000
 export const VARIANT_COUNT = 2
-export const SONG_DURATION_MS = 10000
 
 export type SongVariantRecord = Record<string, unknown> & {
   id: string
@@ -24,15 +23,29 @@ export type SongSessionDetail = Record<string, unknown> & {
   prompt?: string | null
   lyrics?: string | null
   selected_variant_id?: string | null
+  image_storage_path?: string | null
+  image_mime_type?: string | null
   variants: SongVariantRecord[]
+}
+
+export type GeneratedCoverImage = {
+  imageBase64: string
+  mimeType: string
+  imageUrl: string
 }
 
 export async function generateSongSession({
   prompt,
   lyrics,
+  durationMs,
+  coverImageBase64,
+  coverImageMimeType,
 }: {
   prompt: string
   lyrics: string
+  durationMs: number
+  coverImageBase64?: string | null
+  coverImageMimeType?: string | null
 }): Promise<SongSessionDetail> {
   const url = buildApiUrl(API_ENDPOINTS.generateSongSession)
 
@@ -50,10 +63,12 @@ export async function generateSongSession({
       title: deriveTitle(prompt),
       prompt,
       lyrics,
-      music_length_ms: SONG_DURATION_MS,
+      music_length_ms: durationMs,
       model_id: "music_v1",
       force_instrumental: false,
       respect_sections_durations: false,
+      cover_image_base64: coverImageBase64 ?? null,
+      cover_image_mime_type: coverImageMimeType ?? null,
       candidate_count: VARIANT_COUNT,
       user_id: null,
     }),
@@ -107,6 +122,58 @@ export async function generateLyrics(prompt: string) {
   }
 
   return lyrics
+}
+
+export async function generateCoverImage({
+  title,
+  prompt,
+  lyrics,
+}: {
+  title?: string
+  prompt?: string
+  lyrics?: string
+}): Promise<GeneratedCoverImage> {
+  const url = buildApiUrl(API_ENDPOINTS.generateCoverImage)
+
+  if (!url) {
+    throw new Error("Backend URL is missing")
+  }
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify({
+      title,
+      prompt,
+      lyrics,
+    }),
+  })
+
+  if (!response.ok) {
+    throw new Error(await readApiError(response))
+  }
+
+  const payload = (await response.json()) as unknown
+
+  if (!isRecord(payload)) {
+    throw new Error("Cover image response was invalid")
+  }
+
+  const imageBase64 = firstString(payload.image_base64, payload.imageBase64)
+  const mimeType = firstString(payload.mime_type, payload.mimeType)
+
+  if (!imageBase64 || !mimeType) {
+    throw new Error("Cover image response was incomplete")
+  }
+
+  return {
+    imageBase64,
+    mimeType,
+    imageUrl: `data:${mimeType};base64,${imageBase64}`,
+  }
 }
 
 export async function fetchSongSession(

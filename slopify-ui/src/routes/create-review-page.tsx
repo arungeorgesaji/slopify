@@ -1,7 +1,9 @@
 import { useState } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useNavigate, useParams } from "@tanstack/react-router"
-import { Check, Loader2 } from "lucide-react"
+import { Check, Image as ImageIcon, Loader2 } from "lucide-react"
+import { buildApiUrl } from "@/lib/api"
+import { API_ENDPOINTS } from "@/lib/constants"
 import {
   fetchSongSession,
   firstNumber,
@@ -34,10 +36,26 @@ export function CreateReviewPage() {
   } = useQuery({
     queryKey: ["song-session", sessionId],
     queryFn: () => fetchSongSession(sessionId),
+    refetchInterval: (query) => {
+      const session = query.state.data
+      const status = firstString(session?.status)
+
+      if (!session || status === "processing" || status === "partial") {
+        return 5000
+      }
+
+      return false
+    },
   })
 
   const variants = session ? sortSongVariants(session.variants) : []
   const lyrics = session ? getVariantLyrics(session, variants[0]) : ""
+  const coverUrl =
+    session &&
+    firstString(session.image_storage_path, session.imageStoragePath) &&
+    firstString(session.image_mime_type, session.imageMimeType)
+      ? buildApiUrl(API_ENDPOINTS.songSessionImage(session.id))
+      : ""
 
   const handleApprove = async (variant: SongVariantRecord) => {
     if (!session) {
@@ -124,24 +142,50 @@ export function CreateReviewPage() {
 
         {session ? (
           <>
-            <div className="hud-panel rounded-[5px] p-4">
-              <div className="border-b border-border pb-3">
-                <p className="terminal-label">lyric sheet</p>
-              </div>
-              <div className="max-h-[360px] overflow-y-auto pt-4">
-                <div className="slop-sheet rounded-[3px] border border-border-strong px-5 py-5">
-                  {lyrics.split("\n\n").map((section, sectionIndex) => (
-                    <div key={sectionIndex} className="mb-5 last:mb-0">
-                      {section.split("\n").map((line, lineIndex) => (
-                        <p
-                          key={lineIndex}
-                          className="text-base leading-8 font-semibold text-foreground"
-                        >
-                          {line}
-                        </p>
-                      ))}
+            <div className="grid gap-5 lg:grid-cols-[minmax(280px,0.8fr)_minmax(0,1.2fr)]">
+              <div className="hud-panel rounded-[5px] p-4">
+                <div className="border-b border-border pb-3">
+                  <p className="terminal-label">cover art</p>
+                </div>
+                <div className="pt-4">
+                  {coverUrl ? (
+                    <div className="overflow-hidden rounded-[4px] border border-border bg-background/35">
+                      <img
+                        src={coverUrl}
+                        alt="Generated cover art"
+                        className="aspect-square w-full object-cover"
+                      />
                     </div>
-                  ))}
+                  ) : (
+                    <div className="flex aspect-square items-center justify-center rounded-[4px] border border-dashed border-border bg-background/25 px-6 text-center text-sm text-muted-foreground">
+                      <div className="space-y-3">
+                        <ImageIcon className="mx-auto size-8 text-acid" />
+                        <p>Cover art is still syncing to the session.</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="hud-panel rounded-[5px] p-4">
+                <div className="border-b border-border pb-3">
+                  <p className="terminal-label">lyric sheet</p>
+                </div>
+                <div className="max-h-[360px] overflow-y-auto pt-4">
+                  <div className="slop-sheet rounded-[3px] border border-border-strong px-5 py-5">
+                    {lyrics.split("\n\n").map((section, sectionIndex) => (
+                      <div key={sectionIndex} className="mb-5 last:mb-0">
+                        {section.split("\n").map((line, lineIndex) => (
+                          <p
+                            key={lineIndex}
+                            className="text-base leading-8 font-semibold text-foreground"
+                          >
+                            {line}
+                          </p>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>

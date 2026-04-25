@@ -1,13 +1,18 @@
-import { useState, type FormEvent } from "react"
+import { useEffect, useState, type FormEvent } from "react"
 import { useNavigate, useParams } from "@tanstack/react-router"
-import { Loader2, RefreshCcw } from "lucide-react"
+import { Image as ImageIcon, Loader2, RefreshCcw } from "lucide-react"
 import {
   buildMusicPrompt,
+  formatCreateDuration,
   loadCreateDraft,
   saveCreateDraft,
   type CreateDraft,
 } from "@/lib/create-flow"
-import { generateLyrics, generateSongSession } from "@/lib/song-sessions"
+import {
+  generateCoverImage,
+  generateLyrics,
+  generateSongSession,
+} from "@/lib/song-sessions"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 
@@ -20,8 +25,27 @@ export function LyricsReviewPage() {
   const [lyrics, setLyrics] = useState(initialDraft?.lyrics ?? "")
   const [feedback, setFeedback] = useState<string | null>(null)
   const [isRetrying, setIsRetrying] = useState(false)
+  const [isRefreshingCover, setIsRefreshingCover] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
   const navigate = useNavigate()
+  const coverImageUrl =
+    draft?.coverImageBase64 && draft.coverImageMimeType
+      ? `data:${draft.coverImageMimeType};base64,${draft.coverImageBase64}`
+      : ""
+
+  useEffect(() => {
+    if (!draft || draft.coverImageBase64 || isRefreshingCover) {
+      return
+    }
+
+    void refreshCoverImage(draft, {
+      lyrics,
+      setDraft,
+      setFeedback,
+      setIsRefreshingCover,
+      shouldAnnounceStart: false,
+    })
+  }, [draft, isRefreshingCover, lyrics])
 
   const handleRetryLyrics = async () => {
     if (!draft) {
@@ -48,6 +72,21 @@ export function LyricsReviewPage() {
     } finally {
       setIsRetrying(false)
     }
+  }
+
+  const handleRefreshCover = async () => {
+    if (!draft) {
+      setFeedback("Draft was not found. Go back and create lyrics again.")
+      return
+    }
+
+    await refreshCoverImage(draft, {
+      lyrics,
+      setDraft,
+      setFeedback,
+      setIsRefreshingCover,
+      shouldAnnounceStart: true,
+    })
   }
 
   const handleGenerateSong = async (event: FormEvent<HTMLFormElement>) => {
@@ -78,6 +117,9 @@ export function LyricsReviewPage() {
       const session = await generateSongSession({
         prompt: enrichedPrompt,
         lyrics: trimmedLyrics,
+        durationMs: draft.options.durationMs,
+        coverImageBase64: draft.coverImageBase64,
+        coverImageMimeType: draft.coverImageMimeType,
       })
 
       saveCreateDraft({
@@ -140,7 +182,7 @@ export function LyricsReviewPage() {
         ) : (
           <form
             onSubmit={handleGenerateSong}
-            className="grid gap-5 lg:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]"
+            className="grid gap-5 lg:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]"
           >
             <div className="hud-panel rounded-[6px] p-3">
               <div className="flex items-center justify-between border-b border-border px-3 pb-3">
@@ -165,7 +207,7 @@ export function LyricsReviewPage() {
                   size="lg"
                   className="h-11 rounded-[3px] px-5"
                   onClick={() => void handleRetryLyrics()}
-                  disabled={isRetrying || isGenerating}
+                  disabled={isRetrying || isGenerating || isRefreshingCover}
                 >
                   {isRetrying ? (
                     <Loader2 className="size-4 animate-spin" />
@@ -178,7 +220,7 @@ export function LyricsReviewPage() {
                   type="submit"
                   size="lg"
                   className="h-11 rounded-[3px] px-7"
-                  disabled={isRetrying || isGenerating}
+                  disabled={isRetrying || isGenerating || isRefreshingCover}
                 >
                   {isGenerating ? (
                     <>
@@ -192,22 +234,71 @@ export function LyricsReviewPage() {
               </div>
             </div>
 
-            <aside className="hud-panel rounded-[6px] p-4">
-              <div className="border-b border-border pb-3">
-                <p className="terminal-label">generation brief</p>
+            <aside className="space-y-5">
+              <div className="hud-panel rounded-[6px] p-4">
+                <div className="flex items-center justify-between gap-3 border-b border-border pb-3">
+                  <p className="terminal-label">cover art preview</p>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-9 rounded-[3px] px-3"
+                    onClick={() => void handleRefreshCover()}
+                    disabled={isGenerating || isRetrying || isRefreshingCover}
+                  >
+                    {isRefreshingCover ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <RefreshCcw className="size-4" />
+                    )}
+                    {isRefreshingCover ? "Refreshing..." : "Refresh Cover"}
+                  </Button>
+                </div>
+                <div className="pt-4">
+                  {coverImageUrl ? (
+                    <div className="overflow-hidden rounded-[4px] border border-border bg-background/35 shadow-[inset_0_1px_0_rgba(238,244,237,0.04)]">
+                      <img
+                        src={coverImageUrl}
+                        alt="Generated cover preview"
+                        className="aspect-square w-full object-cover"
+                      />
+                    </div>
+                  ) : (
+                    <div className="flex aspect-square items-center justify-center rounded-[4px] border border-dashed border-border bg-background/25 px-6 text-center text-sm text-muted-foreground">
+                      <div className="space-y-3">
+                        <ImageIcon className="mx-auto size-8 text-acid" />
+                        <p>
+                          {isRefreshingCover
+                            ? "Generating cover art from your prompt and lyrics."
+                            : "Generate cover art before sending the final session to music generation."}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
-              <div className="space-y-4 pt-4 text-sm text-muted-foreground">
+
+              <div className="hud-panel rounded-[6px] p-4">
+                <div className="border-b border-border pb-3">
+                  <p className="terminal-label">generation brief</p>
+                </div>
+                <div className="space-y-4 pt-4 text-sm text-muted-foreground">
                 <BriefItem label="Prompt" value={draft.prompt} />
                 <BriefItem label="Voice" value={draft.options.vocalDirection} />
                 <BriefItem label="Type" value={draft.options.songType} />
                 <BriefItem label="Energy" value={draft.options.energy} />
                 <BriefItem label="Language" value={draft.options.language} />
+                <BriefItem
+                  label="Duration"
+                  value={formatCreateDuration(draft.options.durationMs)}
+                />
                 <BriefItem label="Structure" value={draft.options.structure} />
                 <BriefItem
                   label="Instrumentation"
                   value={draft.options.instrumentation}
                 />
                 <BriefItem label="Delivery" value={draft.options.delivery} />
+                </div>
               </div>
             </aside>
           </form>
@@ -232,4 +323,52 @@ function BriefItem({ label, value }: { label: string; value: string }) {
       <p className="mt-1 leading-6 text-foreground">{value}</p>
     </div>
   )
+}
+
+async function refreshCoverImage(
+  draft: CreateDraft,
+  {
+    lyrics,
+    setDraft,
+    setFeedback,
+    setIsRefreshingCover,
+    shouldAnnounceStart,
+  }: {
+    lyrics: string
+    setDraft: (draft: CreateDraft) => void
+    setFeedback: (message: string | null) => void
+    setIsRefreshingCover: (value: boolean) => void
+    shouldAnnounceStart: boolean
+  }
+) {
+  setIsRefreshingCover(true)
+  if (shouldAnnounceStart) {
+    setFeedback("Refreshing cover art from the current prompt and lyrics.")
+  }
+
+  try {
+    const cover = await generateCoverImage({
+      title: draft.prompt,
+      prompt: draft.enrichedPrompt,
+      lyrics: lyrics.trim() || draft.lyrics,
+    })
+
+    const nextDraft = {
+      ...draft,
+      lyrics,
+      coverImageBase64: cover.imageBase64,
+      coverImageMimeType: cover.mimeType,
+    }
+
+    setDraft(nextDraft)
+    saveCreateDraft(nextDraft)
+    setFeedback("Cover art refreshed. The current image will be saved with the music session.")
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown cover image error"
+
+    setFeedback(`Cover image generation failed: ${errorMessage}`)
+  } finally {
+    setIsRefreshingCover(false)
+  }
 }

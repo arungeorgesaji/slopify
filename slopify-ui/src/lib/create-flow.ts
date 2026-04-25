@@ -3,6 +3,7 @@ export type CreateOptions = {
   songType: string
   energy: string
   language: string
+  durationMs: number
   structure: string
   instrumentation: string
   delivery: string
@@ -13,6 +14,8 @@ export type CreateDraft = {
   prompt: string
   enrichedPrompt: string
   lyrics: string
+  coverImageBase64: string | null
+  coverImageMimeType: string | null
   options: CreateOptions
   createdAt: string
 }
@@ -24,6 +27,7 @@ export const DEFAULT_CREATE_OPTIONS: CreateOptions = {
   songType: "Indie pop",
   energy: "Mid energy",
   language: "English",
+  durationMs: 10000,
   structure: "Verse chorus",
   instrumentation: "Full band and synths",
   delivery: "Sung vocals",
@@ -54,6 +58,8 @@ export const ENERGY_OPTIONS = [
 
 export const LANGUAGE_OPTIONS = [
   "English",
+  "Hindi",
+  "Malayalam",
   "Spanish",
   "German",
   "Japanese",
@@ -85,6 +91,10 @@ export const DELIVERY_OPTIONS = [
   "Choir layers",
 ] as const
 
+export const CREATE_DURATION_MIN_MS = 10000
+export const CREATE_DURATION_MAX_MS = 60000
+export const CREATE_DURATION_STEP_MS = 5000
+
 export function createDraftId() {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
     return crypto.randomUUID()
@@ -108,7 +118,36 @@ export function loadCreateDraft(draftId: string) {
   }
 
   try {
-    return JSON.parse(value) as CreateDraft
+    const draft = JSON.parse(value) as Partial<CreateDraft>
+
+    if (
+      !draft ||
+      typeof draft.id !== "string" ||
+      typeof draft.prompt !== "string" ||
+      typeof draft.enrichedPrompt !== "string" ||
+      typeof draft.lyrics !== "string" ||
+      typeof draft.createdAt !== "string"
+    ) {
+      return null
+    }
+
+    return {
+      id: draft.id,
+      prompt: draft.prompt,
+      enrichedPrompt: draft.enrichedPrompt,
+      lyrics: draft.lyrics,
+      coverImageBase64:
+        typeof draft.coverImageBase64 === "string" ? draft.coverImageBase64 : null,
+      coverImageMimeType:
+        typeof draft.coverImageMimeType === "string"
+          ? draft.coverImageMimeType
+          : null,
+      createdAt: draft.createdAt,
+      options: {
+        ...DEFAULT_CREATE_OPTIONS,
+        ...(draft.options ?? {}),
+      },
+    }
   } catch {
     return null
   }
@@ -123,8 +162,26 @@ export function buildMusicPrompt(prompt: string, options: CreateOptions) {
     `- Song type: ${options.songType}.`,
     `- Energy: ${options.energy}.`,
     `- Language: ${options.language}.`,
+    `- Duration: ${formatCreateDuration(options.durationMs)}.`,
     `- Structure: ${options.structure}.`,
     `- Instrumentation: ${options.instrumentation}.`,
     `- Vocal delivery: ${options.delivery}.`,
   ].join("\n")
+}
+
+export function formatCreateDuration(durationMs: number) {
+  const totalSeconds = Math.round(durationMs / 1000)
+
+  if (totalSeconds < 60) {
+    return `${totalSeconds}s`
+  }
+
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+
+  if (seconds === 0) {
+    return `${minutes} min`
+  }
+
+  return `${minutes}m ${seconds}s`
 }

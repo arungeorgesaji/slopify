@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 from concurrent.futures import Future, ThreadPoolExecutor
 from functools import lru_cache
 from io import BytesIO
@@ -10,6 +11,8 @@ from fastapi.responses import StreamingResponse
 
 from app.config import get_settings
 from app.models import (
+    GenerateCoverImageRequest,
+    GenerateCoverImageResponse,
     SongGenerateRequest,
     SongListResponse,
     SongRecord,
@@ -124,6 +127,22 @@ def start_cover_generation(
     return executor, future
 
 
+def decode_cover_image_request(request: SongGenerateRequest | SongSessionGenerateRequest) -> tuple[bytes, str] | None:
+    if not request.cover_image_base64 or not request.cover_image_mime_type:
+        return None
+
+    try:
+        return (
+            base64.b64decode(request.cover_image_base64),
+            request.cover_image_mime_type,
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Cover image payload was invalid.",
+        ) from exc
+
+
 def maybe_attach_song_cover(
     *,
     repository: SupabaseSongsRepository,
@@ -169,6 +188,40 @@ def maybe_attach_song_session_cover(
 
 
 @router.post(
+    "/cover/generate",
+    response_model=GenerateCoverImageResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def generate_cover_image(
+    request: GenerateCoverImageRequest,
+) -> GenerateCoverImageResponse:
+    image_service = get_optional_image_service()
+    if image_service is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Cover image generation is not configured.",
+        )
+
+    try:
+        image_bytes, mime_type = image_service.generate_cover_image(
+            title=sanitize_title(request.title),
+            prompt=request.prompt,
+            lyrics=request.lyrics,
+        )
+    except OpenAIImageError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Cover image generation failed: {exc}",
+        ) from exc
+
+    return GenerateCoverImageResponse(
+        image_base64=base64.b64encode(image_bytes).decode("utf-8"),
+        mime_type=mime_type,
+        model="dall-e-3",
+    )
+
+
+@router.post(
     "/generate",
     response_model=SongRecord,
     status_code=status.HTTP_201_CREATED,
@@ -182,11 +235,17 @@ def generate_song(
         update={"title": resolve_generated_title(request.lyrics, request.title)}
     )
     song = repository.create_song(request)
-    image_executor, image_future = start_cover_generation(
-        title=request.title,
-        prompt=request.prompt,
-        lyrics=request.lyrics,
-    )
+    provided_cover = decode_cover_image_request(request)
+    image_executor = None
+    image_future = None
+    if provided_cover is None:
+        image_executor, image_future = start_cover_generation(
+            title=request.title,
+            prompt=request.prompt,
+            lyrics=request.lyrics,
+        )
+    else:
+        repository.attach_song_cover(song.id, provided_cover[0], provided_cover[1])
     try:
         generated_song = music_service.generate_song(request)
         completed_song = repository.mark_song_completed(
@@ -234,11 +293,21 @@ def generate_song_session(
         update={"title": resolve_generated_title(request.lyrics, request.title)}
     )
     session = repository.create_song_session(request)
-    image_executor, image_future = start_cover_generation(
-        title=request.title,
-        prompt=request.prompt,
-        lyrics=request.lyrics,
-    )
+    provided_cover = decode_cover_image_request(request)
+    image_executor = None
+    image_future = None
+    if provided_cover is None:
+        image_executor, image_future = start_cover_generation(
+            title=request.title,
+            prompt=request.prompt,
+            lyrics=request.lyrics,
+        )
+    else:
+        repository.attach_song_session_cover(
+            session.id,
+            provided_cover[0],
+            provided_cover[1],
+        )
     for variant_index in range(1, request.candidate_count + 1):
         variant = repository.create_song_variant(session.id, request, variant_index)
         try:

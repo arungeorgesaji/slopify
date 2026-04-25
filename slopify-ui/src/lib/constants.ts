@@ -1,6 +1,7 @@
 export const API_ENDPOINTS = {
   enhancePrompt: "/enhance-prompt",
   generateLyrics: "/generate-lyrics",
+  generateCoverImage: "/api/v1/songs/cover/generate",
   songs: "/api/v1/songs",
   generateSong: "/api/v1/songs/generate",
   songSessions: "/api/v1/songs/sessions",

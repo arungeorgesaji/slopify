@@ -4,10 +4,14 @@ import { Loader2, Sparkles } from "lucide-react"
 import { buildApiUrl } from "@/lib/api"
 import {
   buildMusicPrompt,
+  CREATE_DURATION_MAX_MS,
+  CREATE_DURATION_MIN_MS,
+  CREATE_DURATION_STEP_MS,
   createDraftId,
   DEFAULT_CREATE_OPTIONS,
   DELIVERY_OPTIONS,
   ENERGY_OPTIONS,
+  formatCreateDuration,
   INSTRUMENTATION_OPTIONS,
   LANGUAGE_OPTIONS,
   saveCreateDraft,
@@ -19,6 +23,7 @@ import {
 import { API_ENDPOINTS } from "@/lib/constants"
 import { generateLyrics, MAX_PROMPT_LENGTH } from "@/lib/song-sessions"
 import { Button } from "@/components/ui/button"
+import { Slider } from "@/components/ui/slider"
 import { Textarea } from "@/components/ui/textarea"
 
 const STARTER_PROMPT = `I'm coming down after a packed work week and driving alone through the city at night.
@@ -91,6 +96,8 @@ export function CreatePage() {
         prompt: trimmedPrompt,
         enrichedPrompt,
         lyrics,
+        coverImageBase64: null,
+        coverImageMimeType: null,
         options,
         createdAt: new Date().toISOString(),
       })
@@ -132,7 +139,7 @@ export function CreatePage() {
 
         <form
           onSubmit={handleSubmit}
-          className="grid w-full gap-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(340px,0.8fr)]"
+          className="grid w-full gap-5"
         >
           <div className="hud-panel overflow-hidden rounded-[6px] p-3">
             <div className="flex items-center justify-between border-b border-border px-3 pb-3">
@@ -226,6 +233,12 @@ export function CreatePage() {
                   setOptions((current) => ({ ...current, language: value }))
                 }
               />
+              <DurationSlider
+                value={options.durationMs}
+                onChange={(value) =>
+                  setOptions((current) => ({ ...current, durationMs: value }))
+                }
+              />
               <OptionGroup
                 label="Structure"
                 value={options.structure}
@@ -267,16 +280,18 @@ export function CreatePage() {
   )
 }
 
-function OptionGroup({
+function OptionGroup<T extends string | number>({
   label,
   value,
   options,
+  getLabel,
   onChange,
 }: {
   label: string
-  value: string
-  options: readonly string[]
-  onChange: (value: string) => void
+  value: T
+  options: readonly T[]
+  getLabel?: (value: T) => string
+  onChange: (value: T) => void
 }) {
   return (
     <div>
@@ -295,9 +310,50 @@ function OptionGroup({
                 : "border-border bg-background/45 text-muted-foreground hover:border-cyan/60 hover:text-cyan"
             }`}
           >
-            {option}
+            {getLabel ? getLabel(option) : option}
           </button>
         ))}
+      </div>
+    </div>
+  )
+}
+
+function DurationSlider({
+  value,
+  onChange,
+}: {
+  value: number
+  onChange: (value: number) => void
+}) {
+  return (
+    <div>
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <p className="font-mono text-[10px] font-bold tracking-[0.18em] text-muted-foreground uppercase">
+          Duration
+        </p>
+        <span className="font-mono text-xs font-bold tracking-[0.08em] text-acid uppercase">
+          {formatCreateDuration(value)}
+        </span>
+      </div>
+      <Slider
+        min={CREATE_DURATION_MIN_MS}
+        max={CREATE_DURATION_MAX_MS}
+        step={CREATE_DURATION_STEP_MS}
+        value={[value]}
+        onValueChange={(nextValue) => {
+          const nextDuration = Array.isArray(nextValue)
+            ? nextValue[0]
+            : nextValue
+
+          if (typeof nextDuration === "number") {
+            onChange(nextDuration)
+          }
+        }}
+        className="py-2"
+      />
+      <div className="mt-2 flex items-center justify-between font-mono text-[10px] font-bold tracking-[0.12em] text-muted-foreground uppercase">
+        <span>{formatCreateDuration(CREATE_DURATION_MIN_MS)}</span>
+        <span>{formatCreateDuration(CREATE_DURATION_MAX_MS)}</span>
       </div>
     </div>
   )
@@ -369,6 +425,7 @@ function buildStructuredPrompt(prompt: string, options: CreateOptions) {
     `Vocal direction: ${options.vocalDirection}.`,
     `Song type: ${options.songType}.`,
     `Language: ${options.language}.`,
+    `Duration: ${formatCreateDuration(options.durationMs)}.`,
     `Structure: ${options.structure}.`,
     `Instrumentation: ${options.instrumentation}.`,
     `Vocal delivery: ${options.delivery}.`,
