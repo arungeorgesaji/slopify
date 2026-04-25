@@ -1,4 +1,4 @@
-import { useDeferredValue, useMemo, useState } from "react"
+import { useDeferredValue, useEffect, useMemo, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { ArrowLeft, Play } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
@@ -6,25 +6,26 @@ import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import { useSlopifyAppContext } from "@/components/slopify-app-context"
-import { fetchTracks, TOPIC_FILTERS, type Track } from "@/lib/tracks"
+import { fetchTracks, type Track } from "@/lib/tracks"
 
-// Helper functions (assuming these exist in your utilities or lib)
-// If they don't, replace them with track.duration or track.vibe
 const fakeDurationForTrack = (id: string) => "3:45"; 
 const fakeVibeForTrack = (id: string) => "Cyber";
 
 export function HomePage() {
-  const { currentTrack, search, setCurrentTrack } = useSlopifyAppContext()
+  // Resolved: Added setQueue and currentTrack from both versions
+  const { currentTrack, search, setCurrentTrack, setQueue } = useSlopifyAppContext()
   const deferredSearch = useDeferredValue(search)
-  const [activeFilter, setActiveFilter] = useState<
-    (typeof TOPIC_FILTERS)[number] | null
-  >(null)
+  const [activeFilter, setActiveFilter] = useState<string | null>(null)
   const [selectedTrack, setSelectedTrack] = useState<Track | null>(null)
 
   const { data: tracks = [], isLoading } = useQuery({
     queryKey: ["tracks"],
     queryFn: fetchTracks,
   })
+
+  useEffect(() => {
+    setQueue(tracks)
+  }, [setQueue, tracks])
 
   const visibleTracks = useMemo(() => {
     const normalizedSearch = deferredSearch.trim().toLowerCase()
@@ -39,6 +40,12 @@ export function HomePage() {
       return matchesSearch && matchesFilter
     })
   }, [activeFilter, deferredSearch, tracks])
+
+  const availableFilters = useMemo(() => {
+    return Array.from(new Set(tracks.map((track) => track.vibe))).filter(
+      (filter) => filter.length > 0 && filter !== "unknown"
+    )
+  }, [tracks])
 
   return (
     <section className={selectedTrack ? "" : "space-y-6"}>
@@ -69,8 +76,13 @@ export function HomePage() {
                     {selectedTrack.vibe}
                   </Badge>
                   <Badge variant="outline" className="rounded-[3px] px-3 py-1">
-                    {fakeDurationForTrack(selectedTrack.id)}
+                    {selectedTrack.duration || fakeDurationForTrack(selectedTrack.id)}
                   </Badge>
+                  {selectedTrack.variationLabel && (
+                    <Badge variant="outline" className="rounded-[3px] px-3 py-1">
+                      {selectedTrack.variationLabel}
+                    </Badge>
+                  )}
                   <Button
                     className="h-9 rounded-[4px] px-4 font-black uppercase tracking-[0.12em]"
                     onClick={() => setCurrentTrack(selectedTrack)}
@@ -112,9 +124,9 @@ export function HomePage() {
 
                 <div className="grid gap-3 border-t border-border pt-3 sm:grid-cols-3">
                   <div>
-                    <p className="terminal-label">slop index</p>
+                    <p className="terminal-label">song id</p>
                     <p className="mt-1 text-base font-black text-acid">
-                      {selectedTrack.id.replace(/\D/g, "").padStart(2, "0")}.7
+                      {selectedTrack.id.slice(0, 8)}
                     </p>
                   </div>
                   <div>
@@ -139,7 +151,7 @@ export function HomePage() {
                 </div>
                 <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5">
                   <div className="slop-sheet space-y-6 rounded-[3px] border border-border-strong px-5 py-5 shadow-[0_18px_42px_rgba(0,0,0,0.32),0_0_26px_rgba(183,214,106,0.06)]">
-                    {(selectedTrack.lyrics ?? selectedTrack.prompt)
+                    {(selectedTrack.lyrics ?? selectedTrack.prompt ?? "")
                       .split("\n\n")
                       .map((section, idx) => (
                         <div key={idx} className="space-y-2">
@@ -157,22 +169,28 @@ export function HomePage() {
           </div>
         </div>
       ) : (
-        <div className="mx-auto max-w-7xl space-y-4">
-          <div className="hud-panel overflow-hidden rounded-[4px] px-4 py-3 sm:px-5">
-            <div className="relative z-10 flex flex-col gap-1.5">
-              <p className="terminal-label">output queue / music selection</p>
-              <h1 className="text-3xl font-black tracking-[-0.03em] text-foreground sm:text-4xl">
-                Slopify Audio Console
-              </h1>
-              <p className="mt-1 max-w-2xl text-xs font-medium text-muted-foreground sm:text-sm">
-                Pick a generated track and open the Slopify player console.
-              </p>
+        <div className="mx-auto max-w-7xl space-y-6">
+          <div className="hud-panel overflow-hidden rounded-[4px] px-5 py-5 sm:px-6">
+            <div className="relative z-10 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="terminal-label">generation node / ai sound terminal</p>
+                <h1 className="text-3xl font-black tracking-[-0.03em] text-foreground sm:text-5xl">
+                  Slopify audio console
+                </h1>
+                <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+                  Tracks generated and stored by the backend music service.
+                </p>
+              </div>
+              <div className="flex items-center gap-2 rounded-md border border-border bg-background/45 px-3 py-2 font-mono text-xs font-bold tracking-[0.18em] text-muted-foreground uppercase shadow-[inset_0_1px_0_rgba(238,244,237,0.05)]">
+                <span className="status-dot" />
+                signal ready
+              </div>
             </div>
           </div>
 
           <ScrollArea className="w-full whitespace-nowrap">
             <div className="flex gap-2 pb-2">
-              {TOPIC_FILTERS.map((filter) => {
+              {availableFilters.map((filter) => {
                 const isActive = filter === activeFilter
                 return (
                   <button
@@ -247,13 +265,20 @@ export function HomePage() {
                       >
                         <Play className="size-4 translate-x-px" />
                       </button>
-                      <span className="hidden text-sm text-muted-foreground md:block">{fakeVibeForTrack(track.id)}</span>
+                      <span className="hidden text-sm text-muted-foreground md:block">{track.vibe || fakeVibeForTrack(track.id)}</span>
                       <span className="hidden text-sm text-muted-foreground md:block">--</span>
-                      <span className="hidden text-right text-sm text-muted-foreground md:block">{fakeDurationForTrack(track.id)}</span>
+                      <span className="hidden text-right text-sm text-muted-foreground md:block">{track.duration || fakeDurationForTrack(track.id)}</span>
                     </div>
                   )
                 })}
               </div>
+            </div>
+          )}
+
+          {!isLoading && visibleTracks.length === 0 && (
+            <div className="rounded-[4px] border border-dashed border-border bg-muted/30 px-6 py-12 text-center">
+              <p className="text-lg font-medium">No tracks match this search.</p>
+              <p className="mt-2 text-sm text-muted-foreground">Try a different phrase or switch the filter.</p>
             </div>
           )}
         </div>
