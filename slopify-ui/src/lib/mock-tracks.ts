@@ -10,14 +10,14 @@ type TrackMeta = {
 }
 
 export const TOPIC_FILTERS = [
-  "All",
-  "Electronic",
-  "High Adrenaline",
-  "Fast-Paced",
-  "Ambient",
-  "Lo-Fi",
-  "Cinematic",
-  "Acoustic",
+  "situationship debris",
+  "villain arc commute",
+  "group chat evidence",
+  "delulu premium",
+  "left on delivered",
+  "corporate breakdown",
+  "fake deep outro",
+  "main character damage",
 ] as const
 
 const MOCK_TRACKS: Track[] = [
@@ -88,18 +88,18 @@ function getTrackMeta(trackId: string): TrackMeta {
   ]
   const day = 4 + normalizedIndex * 2
   const vibe = [
-    "Electronic",
-    "Fast-Paced",
-    "Cinematic",
-    "High Adrenaline",
-    "Ambient",
-    "Lo-Fi",
-    "Acoustic",
-    "Electronic",
-    "Cinematic",
-    "High Adrenaline",
-    "Lo-Fi",
-    "Ambient",
+    "situationship debris",
+    "villain arc commute",
+    "group chat evidence",
+    "delulu premium",
+    "left on delivered",
+    "corporate breakdown",
+    "fake deep outro",
+    "main character damage",
+    "situationship debris",
+    "villain arc commute",
+    "group chat evidence",
+    "delulu premium",
   ][normalizedIndex]
 
   return {

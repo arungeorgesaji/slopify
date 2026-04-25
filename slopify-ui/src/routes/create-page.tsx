@@ -58,25 +58,26 @@ export function CreatePage() {
   }
 
   return (
-    <section className="flex h-full items-center justify-center overflow-hidden">
-      <div className="relative flex h-full w-full max-w-5xl flex-col items-center justify-center px-4">
+    <section className="flex min-h-[calc(100svh-9rem)] items-center justify-center overflow-hidden">
+      <div className="relative flex w-full max-w-5xl flex-col items-center justify-center px-4 py-8">
         <div className="absolute top-4 right-4 sm:top-6 sm:right-6">
           <Button
             type="button"
             variant="ghost"
-            className="h-10 rounded-full px-5 text-foreground hover:bg-muted"
-            onClick={() => navigate({ to: "/" })}
+            className="h-10 rounded-[3px] px-5"
+            onClick={() => navigate({ to: "/app" })}
           >
             Library
           </Button>
         </div>
 
-        <div className="mb-10 text-center">
-          <p className="text-5xl font-semibold tracking-tight text-primary sm:text-7xl">
+        <div className="mb-8 text-center">
+          <p className="terminal-label">generation node / prompt uplink</p>
+          <p className="mt-2 text-5xl font-black tracking-[-0.04em] text-foreground drop-shadow-[0_0_18px_rgba(183,214,106,0.16)] sm:text-7xl">
             Slopify
           </p>
-          <p className="mt-2 text-sm font-semibold tracking-[0.28em] text-muted-foreground uppercase">
-            Create
+          <p className="mt-3 text-sm font-semibold tracking-[0.24em] text-muted-foreground uppercase">
+            Submit an audio signal brief
           </p>
         </div>
 
@@ -84,41 +85,47 @@ export function CreatePage() {
           onSubmit={handleSubmit}
           className="flex w-full max-w-4xl flex-col items-center gap-5"
         >
-          <div className="w-full rounded-[2rem] border border-border/70 bg-background p-3 shadow-sm shadow-primary/5">
+          <div className="hud-panel w-full overflow-hidden rounded-[6px] p-3">
+            <div className="flex items-center justify-between border-b border-border px-3 pb-3">
+              <span className="terminal-label">audio request input</span>
+              <span className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-cyan">
+                signal draft
+              </span>
+            </div>
             <Textarea
               value={prompt}
               onChange={(event) => {
                 setPrompt(event.target.value)
                 setFeedback(null)
               }}
-              placeholder="Describe your situation, your mood, and the kind of music you want."
-              className="max-h-[280px] min-h-[180px] resize-none overflow-y-auto rounded-[1.5rem] border-0 bg-transparent px-5 py-5 text-lg leading-8 shadow-none focus-visible:ring-0 sm:min-h-[200px] sm:text-xl"
+              placeholder="Describe the scene, emotional signal, tempo, sound palette, and the kind of AI track you want."
+              className="max-h-[300px] min-h-[190px] resize-none overflow-y-auto rounded-[3px] border-0 bg-background/35 px-5 py-5 text-lg leading-8 shadow-[inset_0_1px_0_rgba(238,244,237,0.04),inset_0_0_28px_rgba(0,0,0,0.24)] focus-visible:ring-0 sm:min-h-[220px] sm:text-xl"
             />
 
-            <div className="flex flex-col gap-3 border-t border-border/70 px-3 pt-3 sm:flex-row sm:items-center sm:justify-end">
+            <div className="flex flex-col gap-3 border-t border-border px-3 pt-3 sm:flex-row sm:items-center sm:justify-end">
               <Button
                 type="button"
                 variant="ghost"
                 size="lg"
-                className="h-11 rounded-full px-5 text-primary hover:bg-primary/5"
+                className="h-11 rounded-[3px] px-5"
                 onClick={() => void handleEnhance()}
                 disabled={isEnhancing}
               >
                 <Sparkles className="size-4" />
-                {isEnhancing ? "Enhancing..." : "Enhance with AI"}
+                {isEnhancing ? "Tuning Signal..." : "Enhance With AI"}
               </Button>
               <Button
                 type="submit"
                 size="lg"
-                className="h-11 rounded-full px-7"
+                className="h-11 rounded-[3px] px-7"
               >
-                Submit
+                Submit Signal
               </Button>
             </div>
           </div>
 
           {feedback ? (
-            <div className="rounded-full border border-border/70 bg-background px-4 py-2 text-center text-sm text-muted-foreground shadow-sm">
+            <div className="rounded-[3px] border border-border bg-background/70 px-4 py-2 text-center font-mono text-xs font-bold uppercase tracking-[0.08em] text-muted-foreground shadow-[inset_0_1px_0_rgba(238,244,237,0.04)]">
               {feedback}
             </div>
           ) : null}
