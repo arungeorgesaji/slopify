@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from concurrent.futures import Future, ThreadPoolExecutor
 from functools import lru_cache
 from io import BytesIO
 from uuid import UUID
@@ -18,6 +19,7 @@ from app.models import (
     SongVariantSelectionResponse,
 )
 from app.services.elevenlabs_music import ElevenLabsError, ElevenLabsMusicService
+from app.services.openai_images import OpenAIImageError, OpenAIImageService
 from app.services.openai_text import (
     OpenAITextError,
     OpenAITextService,
@@ -61,6 +63,14 @@ def get_optional_title_service() -> OpenAITextService | None:
     return OpenAITextService(api_key=settings.openai_api_key)
 
 
+@lru_cache(maxsize=1)
+def get_optional_image_service() -> OpenAIImageService | None:
+    settings = get_settings()
+    if not settings.openai_api_key:
+        return None
+    return OpenAIImageService(api_key=settings.openai_api_key)
+
+
 def sanitize_title(title: str | None) -> str | None:
     if not title:
         return None
@@ -94,6 +104,70 @@ def resolve_generated_title(
     return sanitize_title(fallback_title)
 
 
+def start_cover_generation(
+    *,
+    title: str | None,
+    prompt: str | None,
+    lyrics: str | None,
+) -> tuple[ThreadPoolExecutor | None, Future[tuple[bytes, str]] | None]:
+    image_service = get_optional_image_service()
+    if image_service is None:
+        return None, None
+
+    executor: ThreadPoolExecutor = ThreadPoolExecutor(max_workers=1)
+    future = executor.submit(
+        image_service.generate_cover_image,
+        title=title,
+        prompt=prompt,
+        lyrics=lyrics,
+    )
+    return executor, future
+
+
+def maybe_attach_song_cover(
+    *,
+    repository: SupabaseSongsRepository,
+    song_id: UUID,
+    executor: ThreadPoolExecutor | None,
+    future: Future[tuple[bytes, str]] | None,
+) -> None:
+    if future is None:
+        return
+
+    try:
+        image_bytes, mime_type = future.result()
+        repository.attach_song_cover(song_id, image_bytes, mime_type)
+    except OpenAIImageError:
+        return
+    except Exception:
+        return
+    finally:
+        if executor is not None:
+            executor.shutdown(wait=False)
+
+
+def maybe_attach_song_session_cover(
+    *,
+    repository: SupabaseSongsRepository,
+    session_id: UUID,
+    executor: ThreadPoolExecutor | None,
+    future: Future[tuple[bytes, str]] | None,
+) -> None:
+    if future is None:
+        return
+
+    try:
+        image_bytes, mime_type = future.result()
+        repository.attach_song_session_cover(session_id, image_bytes, mime_type)
+    except OpenAIImageError:
+        return
+    except Exception:
+        return
+    finally:
+        if executor is not None:
+            executor.shutdown(wait=False)
+
+
 @router.post(
     "/generate",
     response_model=SongRecord,
@@ -108,15 +182,29 @@ def generate_song(
         update={"title": resolve_generated_title(request.lyrics, request.title)}
     )
     song = repository.create_song(request)
+    image_executor, image_future = start_cover_generation(
+        title=request.title,
+        prompt=request.prompt,
+        lyrics=request.lyrics,
+    )
     try:
         generated_song = music_service.generate_song(request)
-        return repository.mark_song_completed(
+        completed_song = repository.mark_song_completed(
             song_id=song.id,
             audio_bytes=generated_song.audio_bytes,
             mime_type=generated_song.mime_type,
         )
+        maybe_attach_song_cover(
+            repository=repository,
+            song_id=song.id,
+            executor=image_executor,
+            future=image_future,
+        )
+        return repository.get_song(completed_song.id)
     except ElevenLabsError as exc:
         repository.mark_song_failed(song.id, str(exc))
+        if image_executor is not None:
+            image_executor.shutdown(wait=False)
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail={
@@ -127,6 +215,8 @@ def generate_song(
         ) from exc
     except Exception as exc:
         repository.mark_song_failed(song.id, str(exc))
+        if image_executor is not None:
+            image_executor.shutdown(wait=False)
         raise
 
 
@@ -144,6 +234,11 @@ def generate_song_session(
         update={"title": resolve_generated_title(request.lyrics, request.title)}
     )
     session = repository.create_song_session(request)
+    image_executor, image_future = start_cover_generation(
+        title=request.title,
+        prompt=request.prompt,
+        lyrics=request.lyrics,
+    )
     for variant_index in range(1, request.candidate_count + 1):
         variant = repository.create_song_variant(session.id, request, variant_index)
         try:
@@ -158,6 +253,12 @@ def generate_song_session(
         except Exception as exc:
             repository.mark_song_variant_failed(variant.id, str(exc))
 
+    maybe_attach_song_session_cover(
+        repository=repository,
+        session_id=session.id,
+        executor=image_executor,
+        future=image_future,
+    )
     detail = repository.finalize_song_session(session.id)
     if all(variant.status == "failed" for variant in detail.variants):
         raise HTTPException(
@@ -289,6 +390,34 @@ def get_song_variant_audio(
     )
 
 
+@router.get("/sessions/{session_id}/image")
+def get_song_session_image(
+    session_id: UUID,
+    repository: SupabaseSongsRepository = Depends(get_song_repository),
+) -> Response:
+    try:
+        session = repository.get_song_session(session_id)
+    except SongSessionNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Song session {session_id} was not found.",
+        ) from exc
+
+    if not session.image_storage_path or not session.image_mime_type:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Song session cover image is not available yet.",
+        )
+
+    image_bytes = repository.download_image(session.image_storage_path)
+    filename = f"{session.id}.{session.image_storage_path.rsplit('.', 1)[-1]}"
+    return StreamingResponse(
+        BytesIO(image_bytes),
+        media_type=session.image_mime_type,
+        headers={"Content-Disposition": f'inline; filename="{filename}"'},
+    )
+
+
 @router.get("/{song_id}/audio")
 def get_song_audio(
     song_id: UUID,
@@ -313,5 +442,33 @@ def get_song_audio(
     return StreamingResponse(
         BytesIO(audio_bytes),
         media_type=song.mime_type,
+        headers={"Content-Disposition": f'inline; filename="{filename}"'},
+    )
+
+
+@router.get("/{song_id}/image")
+def get_song_image(
+    song_id: UUID,
+    repository: SupabaseSongsRepository = Depends(get_song_repository),
+) -> Response:
+    try:
+        song = repository.get_song(song_id)
+    except SongNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Song {song_id} was not found.",
+        ) from exc
+
+    if not song.image_storage_path or not song.image_mime_type:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Song cover image is not available yet.",
+        )
+
+    image_bytes = repository.download_image(song.image_storage_path)
+    filename = f"{song.id}.{song.image_storage_path.rsplit('.', 1)[-1]}"
+    return StreamingResponse(
+        BytesIO(image_bytes),
+        media_type=song.image_mime_type,
         headers={"Content-Disposition": f'inline; filename="{filename}"'},
     )

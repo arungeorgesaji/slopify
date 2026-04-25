@@ -108,21 +108,43 @@ export function HomePage() {
                 <div className="relative flex flex-1 items-center justify-center overflow-hidden">
                   <div className="absolute inset-5 rounded-[4px] border border-acid/18 bg-[radial-gradient(circle_at_center,_rgba(183,243,91,0.12),_transparent_42%)] shadow-[inset_0_0_68px_rgba(183,243,91,0.08)]" />
                   <div className="absolute inset-x-8 top-1/2 h-px bg-gradient-to-r from-transparent via-cyan/50 to-transparent" />
-                  <div
-                    className="relative flex h-48 items-end gap-2 sm:h-64"
-                    aria-hidden="true"
-                  >
-                    {Array.from({ length: 22 }, (_, index) => (
-                      <span
-                        key={index}
-                        className="equalizer-bar w-2 rounded-sm bg-acid shadow-[0_0_16px_rgba(183,243,91,0.24)] sm:w-2.5"
-                        style={{
-                          animationDelay: `${index * 0.05}s`,
-                          height: `${36 + (index % 8) * 18}px`,
-                        }}
+                  {selectedTrack.coverUrl ? (
+                    <div className="relative aspect-square w-full max-w-[320px] overflow-hidden rounded-[6px] border border-border bg-muted/30 shadow-[0_24px_80px_rgba(0,0,0,0.45),0_0_36px_rgba(183,243,91,0.14)]">
+                      <img
+                        src={selectedTrack.coverUrl}
+                        alt={selectedTrack.title}
+                        className="size-full object-cover"
                       />
-                    ))}
-                  </div>
+                      <div className="pointer-events-none absolute inset-x-5 bottom-5 flex h-24 items-end justify-center gap-1.5">
+                        {Array.from({ length: 18 }, (_, index) => (
+                          <span
+                            key={index}
+                            className="equalizer-bar w-1.5 rounded-sm bg-acid/90 shadow-[0_0_16px_rgba(183,243,91,0.28)]"
+                            style={{
+                              animationDelay: `${index * 0.05}s`,
+                              height: `${18 + (index % 7) * 10}px`,
+                            }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div
+                      className="relative flex h-48 items-end gap-2 sm:h-64"
+                      aria-hidden="true"
+                    >
+                      {Array.from({ length: 22 }, (_, index) => (
+                        <span
+                          key={index}
+                          className="equalizer-bar w-2 rounded-sm bg-acid shadow-[0_0_16px_rgba(183,243,91,0.24)] sm:w-2.5"
+                          style={{
+                            animationDelay: `${index * 0.05}s`,
+                            height: `${36 + (index % 8) * 18}px`,
+                          }}
+                        />
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div className="grid gap-3 border-t border-border pt-3 sm:grid-cols-3">
@@ -267,10 +289,18 @@ export function HomePage() {
                         }}
                         className="flex min-w-0 items-center gap-4 text-left"
                       >
-                        <div className="flex size-14 shrink-0 items-center justify-center rounded-[3px] border border-border bg-muted/40 shadow-inner shadow-black/30">
-                          <div className="flex size-8 items-center justify-center rounded-[2px] border border-acid/45 bg-acid/12 font-mono text-[10px] font-black text-acid">
-                            AI
-                          </div>
+                        <div className="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-[3px] border border-border bg-muted/40 shadow-inner shadow-black/30">
+                          {track.coverUrl ? (
+                            <img
+                              src={track.coverUrl}
+                              alt={track.title}
+                              className="size-full object-cover"
+                            />
+                          ) : (
+                            <div className="flex size-8 items-center justify-center rounded-[2px] border border-acid/45 bg-acid/12 font-mono text-[10px] font-black text-acid">
+                              AI
+                            </div>
+                          )}
                         </div>
                         <div className="min-w-0">
                           <p className="truncate text-lg font-black tracking-[-0.01em] sm:text-xl">

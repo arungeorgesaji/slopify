@@ -3,6 +3,7 @@ import { API_ENDPOINTS } from "@/lib/constants"
 
 export const MAX_PROMPT_LENGTH = 2000
 export const VARIANT_COUNT = 2
+export const SONG_DURATION_MS = 10000
 
 export type SongVariantRecord = Record<string, unknown> & {
   id: string
@@ -47,7 +48,7 @@ export async function generateSongSession(
       title: deriveTitle(prompt),
       prompt,
       lyrics,
-      music_length_ms: 40000,
+      music_length_ms: SONG_DURATION_MS,
       model_id: "music_v1",
       force_instrumental: false,
       respect_sections_durations: false,

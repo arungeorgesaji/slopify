@@ -72,6 +72,7 @@ class SupabaseSongsRepository:
             "respect_sections_durations": request.respect_sections_durations,
             "candidate_count": request.candidate_count,
             "status": "processing",
+            "image_storage_bucket": self._image_bucket,
         }
         result = self._client.table("song_sessions").insert(payload).execute()
         return SongSessionRecord.model_validate(result.data[0])
@@ -137,6 +138,34 @@ class SupabaseSongsRepository:
                     "mime_type": mime_type,
                     "size_bytes": len(audio_bytes),
                     "error_message": None,
+                }
+            )
+            .eq("id", str(song_id))
+            .execute()
+        )
+        return SongRecord.model_validate(result.data[0])
+
+    def attach_song_cover(
+        self,
+        song_id: UUID,
+        image_bytes: bytes,
+        mime_type: str,
+    ) -> SongRecord:
+        extension = self._extension_from_image_mime_type(mime_type)
+        storage_path = f"{song_id}/cover.{extension}"
+
+        self._client.storage.from_(self._image_bucket).upload(
+            storage_path,
+            image_bytes,
+            {"content-type": mime_type},
+        )
+
+        result = (
+            self._client.table("songs")
+            .update(
+                {
+                    "image_storage_path": storage_path,
+                    "image_mime_type": mime_type,
                 }
             )
             .eq("id", str(song_id))
@@ -224,6 +253,36 @@ class SupabaseSongsRepository:
             raise SongSessionNotFoundError(str(session_id))
         session = SongSessionRecord.model_validate(result.data[0])
         return SongSessionDetail(**session.model_dump(), variants=variants)
+
+    def attach_song_session_cover(
+        self,
+        session_id: UUID,
+        image_bytes: bytes,
+        mime_type: str,
+    ) -> SongSessionRecord:
+        extension = self._extension_from_image_mime_type(mime_type)
+        storage_path = f"sessions/{session_id}/cover.{extension}"
+
+        self._client.storage.from_(self._image_bucket).upload(
+            storage_path,
+            image_bytes,
+            {"content-type": mime_type},
+        )
+
+        result = (
+            self._client.table("song_sessions")
+            .update(
+                {
+                    "image_storage_path": storage_path,
+                    "image_mime_type": mime_type,
+                }
+            )
+            .eq("id", str(session_id))
+            .execute()
+        )
+        if not result.data:
+            raise SongSessionNotFoundError(str(session_id))
+        return SongSessionRecord.model_validate(result.data[0])
 
     def get_song(self, song_id: UUID) -> SongRecord:
         result = (
@@ -327,6 +386,9 @@ class SupabaseSongsRepository:
     def download_audio(self, storage_path: str) -> bytes:
         return self._client.storage.from_(self._bucket).download(storage_path)
 
+    def download_image(self, storage_path: str) -> bytes:
+        return self._client.storage.from_(self._image_bucket).download(storage_path)
+
     @staticmethod
     def _extension_from_mime_type(mime_type: str) -> str:
         mapping: dict[str, str] = {
@@ -337,3 +399,12 @@ class SupabaseSongsRepository:
             "audio/ogg": "ogg",
         }
         return mapping.get(mime_type.lower(), "mp3")
+
+    @staticmethod
+    def _extension_from_image_mime_type(mime_type: str) -> str:
+        mapping: dict[str, str] = {
+            "image/png": "png",
+            "image/jpeg": "jpg",
+            "image/webp": "webp",
+        }
+        return mapping.get(mime_type.lower(), "png")

@@ -116,13 +116,30 @@ export function MusicPlayer() {
       ) : null}
       <div className="mx-auto grid w-full max-w-7xl grid-cols-[minmax(0,1fr)_auto] gap-3 px-4 py-3 sm:px-6 lg:grid-cols-[1fr_auto_1fr] lg:items-center lg:px-8">
         <div className="min-w-0 rounded-[3px] border border-border bg-surface/80 px-4 py-3 shadow-[inset_0_1px_0_rgba(238,244,237,0.05)]">
-          <div className="mb-1 flex items-center gap-2">
-            <span className="status-dot" />
-            <span className="terminal-label">signal ready</span>
+          <div className="flex items-center gap-3">
+            <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-[3px] border border-border bg-muted/45 shadow-inner shadow-black/30">
+              {currentTrack?.coverUrl ? (
+                <img
+                  src={currentTrack.coverUrl}
+                  alt={currentTrack.title}
+                  className="size-full object-cover"
+                />
+              ) : (
+                <div className="flex size-8 items-center justify-center rounded-[2px] border border-acid/45 bg-acid/12 font-mono text-[10px] font-black text-acid">
+                  AI
+                </div>
+              )}
+            </div>
+            <div className="min-w-0">
+              <div className="mb-1 flex items-center gap-2">
+                <span className="status-dot" />
+                <span className="terminal-label">signal ready</span>
+              </div>
+              <p className="truncate text-sm font-semibold text-foreground">
+                {currentTrack?.title ?? "No track selected"}
+              </p>
+            </div>
           </div>
-          <p className="truncate text-sm font-semibold text-foreground">
-            {currentTrack?.title ?? "No track selected"}
-          </p>
         </div>
 
         <div className="col-span-2 flex w-full max-w-3xl flex-col items-center gap-2 justify-self-center rounded-[3px] border border-border bg-surface/80 px-4 py-3 shadow-[inset_0_1px_0_rgba(238,244,237,0.06),0_14px_34px_rgba(0,0,0,0.34),0_0_22px_rgba(122,184,176,0.07)] lg:col-span-1 lg:min-w-[28rem]">

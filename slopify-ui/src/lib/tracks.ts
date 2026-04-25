@@ -3,6 +3,8 @@ import { API_ENDPOINTS } from "@/lib/constants"
 
 export type Track = {
   id: string
+  sourceId: string
+  sourceKind: "song" | "session-variant"
   title: string
   prompt: string
   lyrics: string | null
@@ -11,6 +13,7 @@ export type Track = {
   duration: string
   dateAdded: string
   audioUrl: string
+  coverUrl: string
   variationLabel: string
 }
 
@@ -144,8 +147,9 @@ function mapSelectedSessionVariantToTrack(session: BackendSong): Track | null {
     session.selected_variant_id,
     session.selectedVariantId
   )
+  const sessionId = firstString(session.id, session.session_id, session.uuid)
 
-  if (!selectedVariantId) {
+  if (!selectedVariantId || !sessionId) {
     return null
   }
 
@@ -166,6 +170,7 @@ function mapSelectedSessionVariantToTrack(session: BackendSong): Track | null {
       audioKind: "variant",
       includeVariationInId: false,
       variationIndex: variationIndex ?? undefined,
+      coverRecordId: sessionId,
     }
   )
 }
@@ -176,6 +181,7 @@ function mapBackendSongToTrack(
     audioKind: "song" | "variant"
     includeVariationInId?: boolean
     variationIndex?: number
+    coverRecordId?: string
   }
 ): Track | null {
   const id = firstString(song.id, song.song_id, song.uuid)
@@ -205,6 +211,8 @@ function mapBackendSongToTrack(
 
   return {
     id: trackId,
+    sourceId: id,
+    sourceKind: options.audioKind === "variant" ? "session-variant" : "song",
     title: variationLabel ? `${title} (${variationLabel})` : title,
     prompt,
     lyrics,
@@ -213,6 +221,11 @@ function mapBackendSongToTrack(
     duration,
     dateAdded,
     audioUrl: getAudioUrl(song, id, options.audioKind),
+    coverUrl: getCoverUrl(
+      song,
+      options.coverRecordId ?? id,
+      options.audioKind
+    ),
     variationLabel,
   }
 }
@@ -297,6 +310,49 @@ function getAudioUrl(
     audioKind === "variant"
       ? API_ENDPOINTS.songVariantAudio(recordId)
       : API_ENDPOINTS.songAudio(recordId)
+  )
+}
+
+function getCoverUrl(
+  song: BackendSong,
+  recordId: string,
+  audioKind: "song" | "variant"
+) {
+  const directUrl = firstString(
+    song.image_url,
+    song.imageUrl,
+    song.cover_url,
+    song.coverUrl,
+    song.artwork_url,
+    song.artworkUrl,
+    song.image_public_url,
+    song.imagePublicUrl,
+    song.image_signed_url,
+    song.imageSignedUrl
+  )
+
+  if (directUrl) {
+    return directUrl
+  }
+
+  const hasStoredImage = Boolean(
+    firstString(
+      song.image_storage_path,
+      song.imageStoragePath,
+      song.cover_path,
+      song.coverPath
+    ) &&
+      firstString(song.image_mime_type, song.imageMimeType, song.cover_mime_type)
+  )
+
+  if (!hasStoredImage) {
+    return ""
+  }
+
+  return buildApiUrl(
+    audioKind === "variant"
+      ? API_ENDPOINTS.songSessionImage(recordId)
+      : API_ENDPOINTS.songImage(recordId)
   )
 }
 
