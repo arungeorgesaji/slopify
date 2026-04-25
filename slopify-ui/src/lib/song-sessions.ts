@@ -35,6 +35,8 @@ export async function generateSongSession(
     throw new Error("Backend URL is missing")
   }
 
+  const lyrics = await generateLyrics(prompt)
+
   const response = await fetch(url, {
     method: "POST",
     headers: {
@@ -44,7 +46,8 @@ export async function generateSongSession(
     body: JSON.stringify({
       title: deriveTitle(prompt),
       prompt,
-      music_length_ms: 90000,
+      lyrics,
+      music_length_ms: 40000,
       model_id: "music_v1",
       force_instrumental: false,
       respect_sections_durations: false,
@@ -64,6 +67,43 @@ export async function generateSongSession(
   }
 
   return payload
+}
+
+async function generateLyrics(prompt: string) {
+  const url = buildApiUrl(API_ENDPOINTS.generateLyrics)
+
+  if (!url) {
+    throw new Error("Backend URL is missing")
+  }
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify({
+      prompt,
+    }),
+  })
+
+  if (!response.ok) {
+    throw new Error(await readApiError(response))
+  }
+
+  const payload = (await response.json()) as unknown
+
+  if (!isRecord(payload)) {
+    throw new Error("Lyrics response was invalid")
+  }
+
+  const lyrics = firstString(payload.lyrics, payload.text, payload.result)
+
+  if (!lyrics) {
+    throw new Error("Lyrics response was empty")
+  }
+
+  return lyrics
 }
 
 export async function fetchSongSession(

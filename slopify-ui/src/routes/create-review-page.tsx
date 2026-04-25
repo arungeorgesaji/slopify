@@ -37,6 +37,7 @@ export function CreateReviewPage() {
   })
 
   const variants = session ? sortSongVariants(session.variants) : []
+  const lyrics = session ? getVariantLyrics(session, variants[0]) : ""
 
   const handleApprove = async (variant: SongVariantRecord) => {
     if (!session) {
@@ -122,102 +123,108 @@ export function CreateReviewPage() {
         ) : null}
 
         {session ? (
-          <div className="grid gap-5 lg:grid-cols-2">
-            {variants.map((variant) => {
-              const isCompleted = isCompletedVariant(variant)
-              const canApprove = isCompleted && hasVariantAudio(variant)
-              const audioUrl = canApprove ? getVariantAudioUrl(variant) : ""
-              const isSelected = session.selected_variant_id === variant.id
-              const isApproving = approvingVariantId === variant.id
-              const lyrics = getVariantLyrics(session, variant)
-
-              return (
-                <article
-                  key={variant.id}
-                  className={`hud-panel flex min-h-[580px] flex-col rounded-[5px] p-4 ${
-                    isSelected ? "border-acid/70" : ""
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-3 border-b border-border pb-4">
-                    <div className="min-w-0">
-                      <p className="terminal-label">
-                        variation{" "}
-                        {String(getVariantIndex(variant)).padStart(2, "0")}
-                      </p>
-                      <h2 className="mt-2 truncate text-2xl font-black tracking-[-0.02em]">
-                        {firstString(variant.title, session.title) ||
-                          "Generated track"}
-                      </h2>
-                    </div>
-                    <span className="rounded-[3px] border border-border bg-background/60 px-2 py-1 font-mono text-[10px] font-black tracking-[0.14em] text-muted-foreground uppercase">
-                      {firstString(variant.status) || "unknown"}
-                    </span>
-                  </div>
-
-                  <div className="border-b border-border py-4">
-                    {audioUrl ? (
-                      <audio
-                        controls
-                        preload="none"
-                        src={audioUrl}
-                        className="h-10 w-full"
-                      />
-                    ) : (
-                      <p className="rounded-[3px] border border-border bg-background/40 px-3 py-3 text-sm text-muted-foreground">
-                        {firstString(variant.error_message) ||
-                          "Audio is not available for this variation."}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="min-h-0 flex-1 overflow-y-auto py-4">
-                    <div className="slop-sheet rounded-[3px] border border-border-strong px-5 py-5">
-                      {lyrics.split("\n\n").map((section, sectionIndex) => (
-                        <div key={sectionIndex} className="mb-5 last:mb-0">
-                          {section.split("\n").map((line, lineIndex) => (
-                            <p
-                              key={lineIndex}
-                              className="text-base leading-8 font-semibold text-foreground"
-                            >
-                              {line}
-                            </p>
-                          ))}
-                        </div>
+          <>
+            <div className="hud-panel rounded-[5px] p-4">
+              <div className="border-b border-border pb-3">
+                <p className="terminal-label">lyric sheet</p>
+              </div>
+              <div className="max-h-[360px] overflow-y-auto pt-4">
+                <div className="slop-sheet rounded-[3px] border border-border-strong px-5 py-5">
+                  {lyrics.split("\n\n").map((section, sectionIndex) => (
+                    <div key={sectionIndex} className="mb-5 last:mb-0">
+                      {section.split("\n").map((line, lineIndex) => (
+                        <p
+                          key={lineIndex}
+                          className="text-base leading-8 font-semibold text-foreground"
+                        >
+                          {line}
+                        </p>
                       ))}
                     </div>
-                  </div>
+                  ))}
+                </div>
+              </div>
+            </div>
 
-                  <div className="flex items-center justify-between gap-3 border-t border-border pt-4">
-                    <span className="font-mono text-xs font-bold tracking-[0.14em] text-muted-foreground uppercase">
-                      {formatDuration(firstNumber(variant.music_length_ms))}
-                    </span>
-                    <Button
-                      type="button"
-                      size="lg"
-                      variant={isSelected ? "secondary" : "default"}
-                      className="h-10 rounded-[3px] px-4"
-                      onClick={() => void handleApprove(variant)}
-                      disabled={!canApprove || isApproving || isSelected}
-                    >
-                      {isSelected ? (
-                        <>
-                          <Check className="size-4" />
-                          Added
-                        </>
-                      ) : isApproving ? (
-                        <>
-                          <Loader2 className="size-4 animate-spin" />
-                          Adding...
-                        </>
+            <div className="grid gap-5 lg:grid-cols-2">
+              {variants.map((variant) => {
+                const isCompleted = isCompletedVariant(variant)
+                const canApprove = isCompleted && hasVariantAudio(variant)
+                const audioUrl = canApprove ? getVariantAudioUrl(variant) : ""
+                const isSelected = session.selected_variant_id === variant.id
+                const isApproving = approvingVariantId === variant.id
+
+                return (
+                  <article
+                    key={variant.id}
+                    className={`hud-panel flex flex-col rounded-[5px] p-4 ${
+                      isSelected ? "border-acid/70" : ""
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3 border-b border-border pb-4">
+                      <div className="min-w-0">
+                        <p className="terminal-label">
+                          variation{" "}
+                          {String(getVariantIndex(variant)).padStart(2, "0")}
+                        </p>
+                        <h2 className="mt-2 truncate text-2xl font-black tracking-[-0.02em]">
+                          {firstString(variant.title, session.title) ||
+                            "Generated track"}
+                        </h2>
+                      </div>
+                      <span className="rounded-[3px] border border-border bg-background/60 px-2 py-1 font-mono text-[10px] font-black tracking-[0.14em] text-muted-foreground uppercase">
+                        {firstString(variant.status) || "unknown"}
+                      </span>
+                    </div>
+
+                    <div className="border-b border-border py-4">
+                      {audioUrl ? (
+                        <audio
+                          controls
+                          preload="none"
+                          src={audioUrl}
+                          className="h-10 w-full"
+                        />
                       ) : (
-                        "Approve"
+                        <p className="rounded-[3px] border border-border bg-background/40 px-3 py-3 text-sm text-muted-foreground">
+                          {firstString(variant.error_message) ||
+                            "Audio is not available for this variation."}
+                        </p>
                       )}
-                    </Button>
-                  </div>
-                </article>
-              )
-            })}
-          </div>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-3 pt-4">
+                      <span className="font-mono text-xs font-bold tracking-[0.14em] text-muted-foreground uppercase">
+                        {formatDuration(firstNumber(variant.music_length_ms))}
+                      </span>
+                      <Button
+                        type="button"
+                        size="lg"
+                        variant={isSelected ? "secondary" : "default"}
+                        className="h-10 rounded-[3px] px-4"
+                        onClick={() => void handleApprove(variant)}
+                        disabled={!canApprove || isApproving || isSelected}
+                      >
+                        {isSelected ? (
+                          <>
+                            <Check className="size-4" />
+                            Added
+                          </>
+                        ) : isApproving ? (
+                          <>
+                            <Loader2 className="size-4 animate-spin" />
+                            Adding...
+                          </>
+                        ) : (
+                          "Approve"
+                        )}
+                      </Button>
+                    </div>
+                  </article>
+                )
+              })}
+            </div>
+          </>
         ) : null}
       </div>
     </section>
