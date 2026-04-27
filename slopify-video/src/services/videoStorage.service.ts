@@ -1,9 +1,16 @@
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+
 import { env } from "../utils/env.js";
 import { AppError } from "../utils/errors.js";
 
 const hasSupabaseConfig = Boolean(
   env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY && env.SUPABASE_STORAGE_BUCKET
 );
+const supabase: SupabaseClient | null = hasSupabaseConfig
+  ? createClient(env.SUPABASE_URL!, env.SUPABASE_SERVICE_ROLE_KEY!, {
+      auth: { persistSession: false, autoRefreshToken: false }
+    })
+  : null;
 
 const stripFragment = (url: string): string => {
   const hashIndex = url.indexOf("#");
@@ -44,11 +51,22 @@ const storageObjectUrl = (path: string): string => {
   return `${baseUrl}/storage/v1/object/${bucket}/${encodedPath}`;
 };
 
-const publicStorageObjectUrl = (path: string): string => {
-  const baseUrl = env.SUPABASE_URL!.replace(/\/$/, "");
-  const bucket = encodeURIComponent(env.SUPABASE_STORAGE_BUCKET!);
-  const encodedPath = path.split("/").map(encodeURIComponent).join("/");
-  return `${baseUrl}/storage/v1/object/public/${bucket}/${encodedPath}`;
+const signedUrlExpiresInSeconds = 60 * 60 * 24 * 365;
+
+const createSignedVideoUrl = async (path: string): Promise<string | null> => {
+  if (!supabase || !env.SUPABASE_STORAGE_BUCKET) {
+    return null;
+  }
+
+  const { data, error } = await supabase.storage
+    .from(env.SUPABASE_STORAGE_BUCKET)
+    .createSignedUrl(path, signedUrlExpiresInSeconds);
+
+  if (error || !data?.signedUrl) {
+    return null;
+  }
+
+  return data.signedUrl;
 };
 
 export const uploadVideoBytesToStorage = async (params: {
@@ -102,7 +120,7 @@ export const uploadVideoBytesToStorage = async (params: {
     );
   }
 
-  return publicStorageObjectUrl(path);
+  return createSignedVideoUrl(path);
 };
 
 export const uploadVideoFromUrlToStorage = async (params: {

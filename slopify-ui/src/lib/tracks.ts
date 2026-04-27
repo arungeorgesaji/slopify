@@ -36,7 +36,7 @@ export async function fetchTracks(): Promise<Track[]> {
     fetchSelectedSessionTracks(),
   ])
 
-  return dedupeTracks([...selectedSessionTracks, ...songTracks])
+  return dedupeTracks([...songTracks, ...selectedSessionTracks])
 }
 
 export async function refreshTrack(track: Pick<Track, "sourceId" | "sourceKind">) {
@@ -430,16 +430,57 @@ function getCoverUrl(
 }
 
 function dedupeTracks(tracks: Track[]) {
-  const seenTrackIds = new Set<string>()
+  const uniqueById = new Map<string, Track>()
 
-  return tracks.filter((track) => {
-    if (seenTrackIds.has(track.id)) {
-      return false
+  for (const track of tracks) {
+    if (!uniqueById.has(track.id)) {
+      uniqueById.set(track.id, track)
+    }
+  }
+
+  const uniqueByContent = new Map<string, Track>()
+
+  for (const track of uniqueById.values()) {
+    const contentKey = buildTrackContentKey(track)
+    const existing = uniqueByContent.get(contentKey)
+
+    if (!existing) {
+      uniqueByContent.set(contentKey, track)
+      continue
     }
 
-    seenTrackIds.add(track.id)
-    return true
-  })
+    uniqueByContent.set(contentKey, pickPreferredTrack(existing, track))
+  }
+
+  return [...uniqueByContent.values()]
+}
+
+function pickPreferredTrack(left: Track, right: Track) {
+  if (left.sourceKind === right.sourceKind) {
+    return left
+  }
+
+  if (left.sourceKind === "song") {
+    return left
+  }
+
+  if (right.sourceKind === "song") {
+    return right
+  }
+
+  return left
+}
+
+function buildTrackContentKey(track: Track) {
+  return [
+    normalizeTrackKey(track.title),
+    normalizeTrackKey(track.lyrics ?? ""),
+    normalizeTrackKey(track.prompt),
+  ].join("|")
+}
+
+function normalizeTrackKey(value: string) {
+  return value.trim().toLowerCase()
 }
 
 function firstString(...values: unknown[]) {

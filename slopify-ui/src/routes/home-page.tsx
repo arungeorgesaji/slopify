@@ -18,6 +18,17 @@ export function HomePage() {
   const { data: tracks = [], isLoading } = useQuery({
     queryKey: ["tracks"],
     queryFn: fetchTracks,
+    refetchInterval: (query) => {
+      const items = (query.state.data as Track[] | undefined) ?? []
+      const hasPendingVideo = items.some(
+        (track) =>
+          Boolean(track.videoJobId) &&
+          track.videoStatus !== "completed" &&
+          track.videoStatus !== "failed"
+      )
+
+      return hasPendingVideo ? 8000 : false
+    },
   })
 
   useEffect(() => {
@@ -31,6 +42,28 @@ export function HomePage() {
 
     setSelectedTrack(currentTrack)
   }, [currentTrack, selectedTrack])
+
+  useEffect(() => {
+    if (!selectedTrack) {
+      return
+    }
+
+    const refreshedSelectedTrack =
+      tracks.find((track) => track.id === selectedTrack.id) ?? null
+
+    if (!refreshedSelectedTrack) {
+      setSelectedTrack(null)
+      return
+    }
+
+    if (
+      refreshedSelectedTrack.videoStatus !== selectedTrack.videoStatus ||
+      refreshedSelectedTrack.videoUrl !== selectedTrack.videoUrl ||
+      refreshedSelectedTrack.coverUrl !== selectedTrack.coverUrl
+    ) {
+      setSelectedTrack(refreshedSelectedTrack)
+    }
+  }, [selectedTrack, tracks])
 
   const visibleTracks = useMemo(() => {
     const normalizedSearch = deferredSearch.trim().toLowerCase()
