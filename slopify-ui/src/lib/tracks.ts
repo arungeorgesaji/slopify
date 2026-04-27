@@ -14,6 +14,10 @@ export type Track = {
   dateAdded: string
   audioUrl: string
   coverUrl: string
+  videoJobId: string
+  videoStatus: string
+  videoUrl: string
+  videoError: string
   variationLabel: string
 }
 
@@ -35,6 +39,14 @@ export async function fetchTracks(): Promise<Track[]> {
   return dedupeTracks([...selectedSessionTracks, ...songTracks])
 }
 
+export async function refreshTrack(track: Pick<Track, "sourceId" | "sourceKind">) {
+  if (track.sourceKind === "song") {
+    return fetchSongTrack(track.sourceId)
+  }
+
+  return fetchSelectedSessionTrackByVariantId(track.sourceId)
+}
+
 async function fetchSongTracks(): Promise<Track[]> {
   if (!SONGS_URL) {
     return []
@@ -52,6 +64,28 @@ async function fetchSongTracks(): Promise<Track[]> {
   return songs
     .flatMap(mapBackendSongToTracks)
     .filter((track): track is Track => track !== null)
+}
+
+async function fetchSongTrack(songId: string): Promise<Track | null> {
+  const url = buildApiUrl(API_ENDPOINTS.songById(songId))
+
+  if (!url) {
+    throw new Error("Backend URL is missing")
+  }
+
+  const response = await fetch(url)
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch song")
+  }
+
+  const payload = (await response.json()) as unknown
+
+  if (!isRecord(payload)) {
+    throw new Error("Song response was invalid")
+  }
+
+  return mapBackendSongToTrack(payload, { audioKind: "song" })
 }
 
 async function fetchSelectedSessionTracks(): Promise<Track[]> {
@@ -103,6 +137,40 @@ async function fetchSongSessionDetail(sessionId: string) {
   }
 
   return payload
+}
+
+async function fetchSelectedSessionTrackByVariantId(
+  variantId: string
+): Promise<Track | null> {
+  if (!SONG_SESSIONS_URL) {
+    return null
+  }
+
+  const response = await fetch(`${SONG_SESSIONS_URL}?limit=100&offset=0`)
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch song sessions")
+  }
+
+  const payload = (await response.json()) as unknown
+  const sessions = extractSongs(payload).filter((session) => {
+    return (
+      firstString(session.selected_variant_id, session.selectedVariantId) ===
+      variantId
+    )
+  })
+  const sessionId = firstString(
+    sessions[0]?.id,
+    sessions[0]?.session_id,
+    sessions[0]?.uuid
+  )
+
+  if (!sessionId) {
+    return null
+  }
+
+  const detail = await fetchSongSessionDetail(sessionId)
+  return mapSelectedSessionVariantToTrack(detail)
 }
 
 function extractSongs(payload: unknown) {
@@ -226,6 +294,10 @@ function mapBackendSongToTrack(
       options.coverRecordId ?? id,
       options.audioKind
     ),
+    videoJobId: firstString(song.video_job_id, song.videoJobId),
+    videoStatus: firstString(song.video_status, song.videoStatus),
+    videoUrl: firstString(song.video_url, song.videoUrl),
+    videoError: firstString(song.video_error, song.videoError),
     variationLabel,
   }
 }

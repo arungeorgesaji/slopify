@@ -103,6 +103,10 @@ class SongRecord(BaseModel):
     image_storage_bucket: str
     image_storage_path: str | None = None
     image_mime_type: str | None = None
+    video_job_id: str | None = None
+    video_status: str | None = None
+    video_url: str | None = None
+    video_error: str | None = None
     mime_type: str | None = None
     size_bytes: int | None = None
     error_message: str | None = None
@@ -131,6 +135,10 @@ class SongVariantRecord(BaseModel):
     storage_bucket: str
     storage_path: str | None = None
     mime_type: str | None = None
+    video_job_id: str | None = None
+    video_status: str | None = None
+    video_url: str | None = None
+    video_error: str | None = None
     size_bytes: int | None = None
     error_message: str | None = None
     created_at: datetime

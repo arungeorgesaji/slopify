@@ -15,8 +15,28 @@ VIDEO_MODEL=sora-2
 SUPABASE_URL=
 SUPABASE_SERVICE_ROLE_KEY=
 SUPABASE_STORAGE_BUCKET=videos
+HOST=0.0.0.0
 PORT=3000
 ```
+
+For Railway, set:
+
+```bash
+OPENAI_API_KEY=...
+CHAT_MODEL=gpt-4.1
+VIDEO_MODEL=sora-2
+SUPABASE_URL=...
+SUPABASE_SERVICE_ROLE_KEY=...
+SUPABASE_STORAGE_BUCKET=videos
+HOST=0.0.0.0
+PORT=${{ PORT }}
+```
+
+The service includes:
+
+- `railway.json` with `npm run start` and `/health` healthcheck
+- `Procfile` fallback for platforms that honor it
+- explicit `0.0.0.0` binding so Railway can reach the container port
 
 ## Endpoints
 
@@ -25,11 +45,12 @@ PORT=3000
 - `GET /album-video/status/:jobId`
 - `GET /album-video/video/:providerJobId`
 
-`POST /album-video/generate` accepts `{ id?, title?, lyrics? }`, starts the generation job in the background, and immediately returns:
+`POST /album-video/generate` accepts song metadata, starts the generation job in the background, and immediately returns:
 
 ```json
 {
-  "success": true
+  "success": true,
+  "jobId": "9d1dcf0e-6f6f-4388-b51b-e63865dd61ba"
 }
 ```
 

@@ -17,6 +17,7 @@ const envSchema = z.object({
   SUPABASE_URL: optionalUrl,
   SUPABASE_SERVICE_ROLE_KEY: optionalNonEmptyString,
   SUPABASE_STORAGE_BUCKET: optionalNonEmptyString,
+  HOST: z.string().min(1).default("0.0.0.0"),
   PORT: z.coerce.number().int().positive().default(3000)
 });
 

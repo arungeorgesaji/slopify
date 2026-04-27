@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react"
+import { useEffect, useRef, useState, type FormEvent } from "react"
 import { useNavigate, useParams } from "@tanstack/react-router"
 import { Image as ImageIcon, Loader2, RefreshCcw } from "lucide-react"
 import {
@@ -27,6 +27,7 @@ export function LyricsReviewPage() {
   const [isRetrying, setIsRetrying] = useState(false)
   const [isRefreshingCover, setIsRefreshingCover] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
+  const attemptedAutoCoverKeyRef = useRef<string | null>(null)
   const navigate = useNavigate()
   const coverImageUrl =
     draft?.coverImageBase64 && draft.coverImageMimeType
@@ -37,6 +38,13 @@ export function LyricsReviewPage() {
     if (!draft || draft.coverImageBase64 || isRefreshingCover) {
       return
     }
+
+    const autoCoverKey = `${draft.id}:${lyrics.trim()}`
+    if (attemptedAutoCoverKeyRef.current === autoCoverKey) {
+      return
+    }
+
+    attemptedAutoCoverKeyRef.current = autoCoverKey
 
     void refreshCoverImage(draft, {
       lyrics,
@@ -80,6 +88,7 @@ export function LyricsReviewPage() {
       return
     }
 
+    attemptedAutoCoverKeyRef.current = `${draft.id}:${lyrics.trim()}`
     await refreshCoverImage(draft, {
       lyrics,
       setDraft,

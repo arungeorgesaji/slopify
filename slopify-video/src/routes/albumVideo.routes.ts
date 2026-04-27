@@ -25,9 +25,9 @@ albumVideoRoutes.post(
     const input = c.req.valid("json");
     console.info(`[route] request received for song ${input.songId}`);
 
-    startAlbumVideoGeneration(input);
+    const job = startAlbumVideoGeneration(input);
 
-    return c.json({ success: true }, 202);
+    return c.json({ success: true, jobId: job.jobId }, 202);
   }
 );
 

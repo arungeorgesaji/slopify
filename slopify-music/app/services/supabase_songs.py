@@ -145,6 +145,48 @@ class SupabaseSongsRepository:
         )
         return SongRecord.model_validate(result.data[0])
 
+    def mark_song_video_job_started(
+        self,
+        song_id: UUID,
+        job_id: str,
+    ) -> SongRecord:
+        result = (
+            self._client.table("songs")
+            .update(
+                {
+                    "video_job_id": job_id,
+                    "video_status": "queued",
+                    "video_url": None,
+                    "video_error": None,
+                }
+            )
+            .eq("id", str(song_id))
+            .execute()
+        )
+        return SongRecord.model_validate(result.data[0])
+
+    def update_song_video_status(
+        self,
+        song_id: UUID,
+        *,
+        status: str,
+        video_url: str | None,
+        error: str | None,
+    ) -> SongRecord:
+        result = (
+            self._client.table("songs")
+            .update(
+                {
+                    "video_status": status,
+                    "video_url": video_url,
+                    "video_error": error[:2000] if error else None,
+                }
+            )
+            .eq("id", str(song_id))
+            .execute()
+        )
+        return SongRecord.model_validate(result.data[0])
+
     def attach_song_cover(
         self,
         song_id: UUID,
@@ -184,6 +226,52 @@ class SupabaseSongsRepository:
                 {
                     "status": "failed",
                     "error_message": error_message[:2000],
+                }
+            )
+            .eq("id", str(variant_id))
+            .execute()
+        )
+        if not result.data:
+            raise SongVariantNotFoundError(str(variant_id))
+        return SongVariantRecord.model_validate(result.data[0])
+
+    def mark_song_variant_video_job_started(
+        self,
+        variant_id: UUID,
+        job_id: str,
+    ) -> SongVariantRecord:
+        result = (
+            self._client.table("song_variants")
+            .update(
+                {
+                    "video_job_id": job_id,
+                    "video_status": "queued",
+                    "video_url": None,
+                    "video_error": None,
+                }
+            )
+            .eq("id", str(variant_id))
+            .execute()
+        )
+        if not result.data:
+            raise SongVariantNotFoundError(str(variant_id))
+        return SongVariantRecord.model_validate(result.data[0])
+
+    def update_song_variant_video_status(
+        self,
+        variant_id: UUID,
+        *,
+        status: str,
+        video_url: str | None,
+        error: str | None,
+    ) -> SongVariantRecord:
+        result = (
+            self._client.table("song_variants")
+            .update(
+                {
+                    "video_status": status,
+                    "video_url": video_url,
+                    "video_error": error[:2000] if error else None,
                 }
             )
             .eq("id", str(variant_id))

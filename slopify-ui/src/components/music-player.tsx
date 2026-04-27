@@ -3,9 +3,11 @@ import { Pause, Play, SkipBack, SkipForward, Volume2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Slider } from "@/components/ui/slider"
 import { useSlopifyAppContext } from "@/components/slopify-app-context"
+import { refreshTrack } from "@/lib/tracks"
 
 export function MusicPlayer() {
-  const { currentTrack, queue, setCurrentTrack } = useSlopifyAppContext()
+  const { currentTrack, queue, setCurrentTrack, setQueue } =
+    useSlopifyAppContext()
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [progress, setProgress] = useState([0])
@@ -34,6 +36,50 @@ export function MusicPlayer() {
 
     audioRef.current.volume = volume[0] / 100
   }, [volume])
+
+  useEffect(() => {
+    if (
+      !currentTrack ||
+      !currentTrack.videoJobId ||
+      currentTrack.videoStatus === "completed" ||
+      currentTrack.videoStatus === "failed"
+    ) {
+      return
+    }
+
+    let cancelled = false
+
+    const syncTrack = async () => {
+      try {
+        const refreshedTrack = await refreshTrack(currentTrack)
+
+        if (!refreshedTrack || cancelled) {
+          return
+        }
+
+        setCurrentTrack((existing) =>
+          existing?.id === refreshedTrack.id ? refreshedTrack : existing
+        )
+        setQueue((existingQueue) =>
+          existingQueue.map((queuedTrack) =>
+            queuedTrack.id === refreshedTrack.id ? refreshedTrack : queuedTrack
+          )
+        )
+      } catch {
+        return
+      }
+    }
+
+    void syncTrack()
+    const intervalId = window.setInterval(() => {
+      void syncTrack()
+    }, 8000)
+
+    return () => {
+      cancelled = true
+      window.clearInterval(intervalId)
+    }
+  }, [currentTrack, setCurrentTrack, setQueue])
 
   const handleProgressChange = (value: number | readonly number[]) => {
     const nextProgress = Array.isArray(value) ? value[0] : value
@@ -118,7 +164,17 @@ export function MusicPlayer() {
         <div className="min-w-0 rounded-[3px] border border-border bg-surface/80 px-4 py-3 shadow-[inset_0_1px_0_rgba(238,244,237,0.05)]">
           <div className="flex items-center gap-3">
             <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-[3px] border border-border bg-muted/45 shadow-inner shadow-black/30">
-              {currentTrack?.coverUrl ? (
+              {currentTrack?.videoStatus === "completed" && currentTrack.videoUrl ? (
+                <video
+                  src={currentTrack.videoUrl}
+                  poster={currentTrack.coverUrl || undefined}
+                  className="size-full object-cover"
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                />
+              ) : currentTrack?.coverUrl ? (
                 <img
                   src={currentTrack.coverUrl}
                   alt={currentTrack.title}
@@ -138,6 +194,14 @@ export function MusicPlayer() {
               <p className="truncate text-sm font-semibold text-foreground">
                 {currentTrack?.title ?? "No track selected"}
               </p>
+              {currentTrack?.videoStatus &&
+              currentTrack.videoStatus !== "completed" ? (
+                <p className="font-mono text-[10px] font-bold tracking-[0.14em] text-cyan uppercase">
+                  {currentTrack.videoStatus === "failed"
+                    ? "video unavailable"
+                    : "video rendering"}
+                </p>
+              ) : null}
             </div>
           </div>
         </div>

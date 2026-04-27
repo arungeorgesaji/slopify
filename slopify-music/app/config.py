@@ -14,6 +14,10 @@ class Settings(BaseSettings):
         alias="ELEVENLABS_BASE_URL",
     )
     openai_api_key: str | None = Field(default=None, alias="OPENAI_API_KEY")
+    album_video_service_base_url: str | None = Field(
+        default=None,
+        alias="ALBUM_VIDEO_SERVICE_BASE_URL",
+    )
     supabase_url: str = Field(..., alias="SUPABASE_URL")
     supabase_service_role_key: str = Field(..., alias="SUPABASE_SERVICE_ROLE_KEY")
     supabase_storage_bucket: str = Field(

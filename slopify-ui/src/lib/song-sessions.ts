@@ -375,7 +375,17 @@ function extractErrorDetail(payload: unknown) {
   }
 
   if (isRecord(detail)) {
-    return firstString(detail.message, detail.provider_error)
+    const firstVariantError = Array.isArray(detail.variant_errors)
+      ? detail.variant_errors.find(
+          (item) => isRecord(item) && firstString(item.provider_error)
+        )
+      : null
+
+    return firstString(
+      detail.message,
+      detail.provider_error,
+      isRecord(firstVariantError) ? firstVariantError.provider_error : ""
+    )
   }
 
   return firstString(payload.message, payload.error)

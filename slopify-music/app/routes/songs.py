@@ -19,8 +19,10 @@ from app.models import (
     SongSessionDetail,
     SongSessionGenerateRequest,
     SongSessionListResponse,
+    SongVariantRecord,
     SongVariantSelectionResponse,
 )
+from app.services.album_video import AlbumVideoError, AlbumVideoService
 from app.services.elevenlabs_music import ElevenLabsError, ElevenLabsMusicService
 from app.services.openai_images import OpenAIImageError, OpenAIImageService
 from app.services.openai_text import (
@@ -74,6 +76,14 @@ def get_optional_image_service() -> OpenAIImageService | None:
     return OpenAIImageService(api_key=settings.openai_api_key)
 
 
+@lru_cache(maxsize=1)
+def get_optional_album_video_service() -> AlbumVideoService | None:
+    settings = get_settings()
+    if not settings.album_video_service_base_url:
+        return None
+    return AlbumVideoService(base_url=settings.album_video_service_base_url)
+
+
 def sanitize_title(title: str | None) -> str | None:
     if not title:
         return None
@@ -125,6 +135,138 @@ def start_cover_generation(
         lyrics=lyrics,
     )
     return executor, future
+
+
+def clamp_video_duration_seconds(duration_ms: int | None) -> int:
+    if duration_ms is None:
+        return 8
+    duration_seconds = round(duration_ms / 1000)
+    return max(4, min(duration_seconds, 12))
+
+
+def maybe_start_song_video_generation(
+    *,
+    repository: SupabaseSongsRepository,
+    song: SongRecord,
+) -> SongRecord:
+    if song.video_job_id or song.status != "completed":
+        return song
+
+    video_service = get_optional_album_video_service()
+    if video_service is None:
+        return song
+
+    try:
+        started = video_service.start_generation(
+            song_id=str(song.id),
+            title=song.title,
+            artist_name="Slopify AI",
+            lyrics=song.lyrics,
+            genre=None,
+            mood=None,
+            theme=song.prompt,
+            duration_seconds=clamp_video_duration_seconds(song.music_length_ms),
+        )
+        return repository.mark_song_video_job_started(song.id, started.job_id)
+    except AlbumVideoError as exc:
+        return repository.update_song_video_status(
+            song.id,
+            status="failed",
+            video_url=None,
+            error=str(exc),
+        )
+
+
+def maybe_start_song_variant_video_generation(
+    *,
+    repository: SupabaseSongsRepository,
+    session: SongSessionDetail,
+    variant: SongVariantRecord,
+) -> SongVariantRecord:
+    if variant.video_job_id or variant.status != "completed":
+        return variant
+
+    video_service = get_optional_album_video_service()
+    if video_service is None:
+        return variant
+
+    try:
+        started = video_service.start_generation(
+            song_id=str(variant.id),
+            title=variant.title or session.title,
+            artist_name="Slopify AI",
+            lyrics=variant.lyrics or session.lyrics,
+            genre=None,
+            mood=None,
+            theme=variant.prompt or session.prompt,
+            duration_seconds=clamp_video_duration_seconds(
+                variant.music_length_ms or session.music_length_ms
+            ),
+        )
+        return repository.mark_song_variant_video_job_started(
+            variant.id,
+            started.job_id,
+        )
+    except AlbumVideoError as exc:
+        return repository.update_song_variant_video_status(
+            variant.id,
+            status="failed",
+            video_url=None,
+            error=str(exc),
+        )
+
+
+def maybe_refresh_song_video_status(
+    *,
+    repository: SupabaseSongsRepository,
+    song: SongRecord,
+) -> SongRecord:
+    if not song.video_job_id or song.video_status not in {"queued", "processing"}:
+        return song
+
+    video_service = get_optional_album_video_service()
+    if video_service is None:
+        return song
+
+    try:
+        status_result = video_service.get_status(song.video_job_id)
+    except AlbumVideoError:
+        return song
+
+    return repository.update_song_video_status(
+        song.id,
+        status=status_result.status,
+        video_url=status_result.video_url,
+        error=status_result.error,
+    )
+
+
+def maybe_refresh_song_variant_video_status(
+    *,
+    repository: SupabaseSongsRepository,
+    variant: SongVariantRecord,
+) -> SongVariantRecord:
+    if (
+        not variant.video_job_id
+        or variant.video_status not in {"queued", "processing"}
+    ):
+        return variant
+
+    video_service = get_optional_album_video_service()
+    if video_service is None:
+        return variant
+
+    try:
+        status_result = video_service.get_status(variant.video_job_id)
+    except AlbumVideoError:
+        return variant
+
+    return repository.update_song_variant_video_status(
+        variant.id,
+        status=status_result.status,
+        video_url=status_result.video_url,
+        error=status_result.error,
+    )
 
 
 def require_image_service() -> OpenAIImageService:
@@ -243,7 +385,11 @@ def generate_song(
             executor=image_executor,
             future=image_future,
         )
-        return repository.get_song(completed_song.id)
+        final_song = repository.get_song(completed_song.id)
+        return maybe_start_song_video_generation(
+            repository=repository,
+            song=final_song,
+        )
     except ElevenLabsError as exc:
         repository.mark_song_failed(song.id, str(exc))
         if image_executor is not None:
@@ -329,6 +475,10 @@ def list_songs(
     repository: SupabaseSongsRepository = Depends(get_song_repository),
 ) -> SongListResponse:
     items, total = repository.list_songs(limit=limit, offset=offset)
+    items = [
+        maybe_refresh_song_video_status(repository=repository, song=item)
+        for item in items
+    ]
     return SongListResponse(items=items, total=total)
 
 
@@ -348,7 +498,18 @@ def get_song_session(
     repository: SupabaseSongsRepository = Depends(get_song_repository),
 ) -> SongSessionDetail:
     try:
-        return repository.get_song_session(session_id)
+        session = repository.get_song_session(session_id)
+        refreshed_variants = [
+            maybe_refresh_song_variant_video_status(
+                repository=repository,
+                variant=variant,
+            )
+            for variant in session.variants
+        ]
+        return SongSessionDetail(
+            **session.model_dump(exclude={"variants"}),
+            variants=refreshed_variants,
+        )
     except SongSessionNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -374,6 +535,12 @@ def select_song_variant(
             )
         repository.select_song_variant(session_id, variant_id)
         session = repository.get_song_session(session_id)
+        variant = maybe_start_song_variant_video_generation(
+            repository=repository,
+            session=session,
+            variant=variant,
+        )
+        session = repository.get_song_session(session_id)
         return SongVariantSelectionResponse(session=session, selected_variant=variant)
     except SongSessionNotFoundError as exc:
         raise HTTPException(
@@ -393,7 +560,8 @@ def get_song(
     repository: SupabaseSongsRepository = Depends(get_song_repository),
 ) -> SongRecord:
     try:
-        return repository.get_song(song_id)
+        song = repository.get_song(song_id)
+        return maybe_refresh_song_video_status(repository=repository, song=song)
     except SongNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

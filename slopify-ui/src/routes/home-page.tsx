@@ -24,6 +24,14 @@ export function HomePage() {
     setQueue(tracks)
   }, [setQueue, tracks])
 
+  useEffect(() => {
+    if (!selectedTrack || !currentTrack || selectedTrack.id !== currentTrack.id) {
+      return
+    }
+
+    setSelectedTrack(currentTrack)
+  }, [currentTrack, selectedTrack])
+
   const visibleTracks = useMemo(() => {
     const normalizedSearch = deferredSearch.trim().toLowerCase()
     return tracks.filter((track) => {
@@ -108,7 +116,32 @@ export function HomePage() {
                 <div className="relative flex flex-1 items-center justify-center overflow-hidden">
                   <div className="absolute inset-5 rounded-[4px] border border-acid/18 bg-[radial-gradient(circle_at_center,_rgba(183,243,91,0.12),_transparent_42%)] shadow-[inset_0_0_68px_rgba(183,243,91,0.08)]" />
                   <div className="absolute inset-x-8 top-1/2 h-px bg-gradient-to-r from-transparent via-cyan/50 to-transparent" />
-                  {selectedTrack.coverUrl ? (
+                  {selectedTrack.videoStatus === "completed" &&
+                  selectedTrack.videoUrl ? (
+                    <div className="relative aspect-square w-full max-w-[320px] overflow-hidden rounded-[6px] border border-border bg-muted/30 shadow-[0_24px_80px_rgba(0,0,0,0.45),0_0_36px_rgba(183,243,91,0.14)]">
+                      <video
+                        src={selectedTrack.videoUrl}
+                        poster={selectedTrack.coverUrl || undefined}
+                        className="size-full object-cover"
+                        autoPlay
+                        muted
+                        loop
+                        playsInline
+                      />
+                      <div className="pointer-events-none absolute inset-x-5 bottom-5 flex h-24 items-end justify-center gap-1.5">
+                        {Array.from({ length: 18 }, (_, index) => (
+                          <span
+                            key={index}
+                            className="equalizer-bar w-1.5 rounded-sm bg-acid/90 shadow-[0_0_16px_rgba(183,243,91,0.28)]"
+                            style={{
+                              animationDelay: `${index * 0.05}s`,
+                              height: `${18 + (index % 7) * 10}px`,
+                            }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ) : selectedTrack.coverUrl ? (
                     <div className="relative aspect-square w-full max-w-[320px] overflow-hidden rounded-[6px] border border-border bg-muted/30 shadow-[0_24px_80px_rgba(0,0,0,0.45),0_0_36px_rgba(183,243,91,0.14)]">
                       <img
                         src={selectedTrack.coverUrl}

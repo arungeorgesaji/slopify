@@ -1,11 +1,12 @@
 import type { GenerateAlbumVideoRequest } from "../types/albumVideo.types.js";
+import type { AlbumVideoJob } from "../types/albumVideo.types.js";
 import { generateAlbumVideoPrompt } from "./gptPrompt.service.js";
 import {
   createQueuedVideoJob,
   generateVideoForJob
 } from "./soraVideo.service.js";
 
-export const startAlbumVideoGeneration = (input: GenerateAlbumVideoRequest): void => {
+export const startAlbumVideoGeneration = (input: GenerateAlbumVideoRequest): AlbumVideoJob => {
   const job = createQueuedVideoJob({
     songId: input.songId
   });
@@ -26,4 +27,6 @@ export const startAlbumVideoGeneration = (input: GenerateAlbumVideoRequest): voi
       console.error(`[job] generation failed for song ${input.songId}`, error);
     }
   })();
+
+  return job;
 };

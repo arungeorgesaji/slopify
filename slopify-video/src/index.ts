@@ -71,11 +71,12 @@ app.onError((error, c) => {
 serve(
   {
     fetch: app.fetch,
+    hostname: env.HOST,
     port: env.PORT
   },
   (info) => {
     console.log(
-      `Lyrics-to-Album-Video service listening on http://localhost:${info.port}`
+      `Lyrics-to-Album-Video service listening on http://${env.HOST}:${info.port}`
     );
   }
 );
