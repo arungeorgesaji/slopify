@@ -17,6 +17,11 @@ const INTRO_SUBTITLES = [
   "where corporate despair, bedroom pop, and unpaid group projects become radio-ready",
   "feeding your intrusive thoughts into a synth engine with no adult supervision",
 ]
+const INTRO_WAVE_BARS = Array.from({ length: 24 }, (_, index) => ({
+  id: index,
+  animationDelay: `${index * 0.045}s`,
+  height: `${12 + (index % 9) * 4}px`,
+}))
 
 export function IntroPage() {
   const [subtitleIndex, setSubtitleIndex] = useState(0)
@@ -79,19 +84,19 @@ export function IntroPage() {
             Enter Slopify
             <ArrowRight className="size-4" />
           </Button>
-          <div className="flex items-center gap-2 font-mono text-[11px] font-bold uppercase tracking-[0.22em] text-intro-muted">
+          <div className="flex items-center gap-2 font-mono text-[11px] font-bold tracking-[0.22em] text-intro-muted uppercase">
             <span className="intro-status-dot" />
             signal ready
           </div>
         </div>
 
         <div className="intro-wave" aria-hidden="true">
-          {Array.from({ length: 42 }, (_, index) => (
+          {INTRO_WAVE_BARS.map((bar) => (
             <span
-              key={index}
+              key={bar.id}
               style={{
-                animationDelay: `${index * 0.045}s`,
-                height: `${12 + (index % 9) * 4}px`,
+                animationDelay: bar.animationDelay,
+                height: bar.height,
               }}
             />
           ))}

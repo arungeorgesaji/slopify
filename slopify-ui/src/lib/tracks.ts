@@ -25,6 +25,8 @@ type BackendSong = Record<string, unknown>
 
 const SONGS_URL = buildApiUrl(API_ENDPOINTS.songs)
 const SONG_SESSIONS_URL = buildApiUrl(API_ENDPOINTS.songSessions)
+const TRACK_PAGE_SIZE = 100
+const SESSION_DETAIL_CONCURRENCY = 6
 
 export async function fetchTracks(): Promise<Track[]> {
   if (!hasSongsBackend()) {
@@ -39,7 +41,9 @@ export async function fetchTracks(): Promise<Track[]> {
   return dedupeTracks([...songTracks, ...selectedSessionTracks])
 }
 
-export async function refreshTrack(track: Pick<Track, "sourceId" | "sourceKind">) {
+export async function refreshTrack(
+  track: Pick<Track, "sourceId" | "sourceKind">
+) {
   if (track.sourceKind === "song") {
     return fetchSongTrack(track.sourceId)
   }
@@ -52,7 +56,7 @@ async function fetchSongTracks(): Promise<Track[]> {
     return []
   }
 
-  const response = await fetch(`${SONGS_URL}?limit=100&offset=0`)
+  const response = await fetch(`${SONGS_URL}?limit=${TRACK_PAGE_SIZE}&offset=0`)
 
   if (!response.ok) {
     throw new Error("Failed to fetch songs")
@@ -93,23 +97,28 @@ async function fetchSelectedSessionTracks(): Promise<Track[]> {
     return []
   }
 
-  const response = await fetch(`${SONG_SESSIONS_URL}?limit=100&offset=0`)
+  const response = await fetch(
+    `${SONG_SESSIONS_URL}?limit=${TRACK_PAGE_SIZE}&offset=0`
+  )
 
   if (!response.ok) {
     throw new Error("Failed to fetch song sessions")
   }
 
   const payload = (await response.json()) as unknown
-  const sessions = extractSongs(payload).filter((session) =>
-    firstString(session.selected_variant_id, session.selectedVariantId) &&
-    !firstString(session.selected_song_id, session.selectedSongId)
+  const sessions = extractSongs(payload).filter(
+    (session) =>
+      firstString(session.selected_variant_id, session.selectedVariantId) &&
+      !firstString(session.selected_song_id, session.selectedSongId)
   )
   const sessionIds = sessions
     .map((session) => firstString(session.id, session.session_id, session.uuid))
     .filter(Boolean)
 
-  const sessionDetails = await Promise.allSettled(
-    sessionIds.map((sessionId) => fetchSongSessionDetail(sessionId))
+  const sessionDetails = await mapSettledWithConcurrency(
+    sessionIds,
+    SESSION_DETAIL_CONCURRENCY,
+    fetchSongSessionDetail
   )
 
   return sessionDetails
@@ -147,7 +156,9 @@ async function fetchSelectedSessionTrackByVariantId(
     return null
   }
 
-  const response = await fetch(`${SONG_SESSIONS_URL}?limit=100&offset=0`)
+  const response = await fetch(
+    `${SONG_SESSIONS_URL}?limit=${TRACK_PAGE_SIZE}&offset=0`
+  )
 
   if (!response.ok) {
     throw new Error("Failed to fetch song sessions")
@@ -190,6 +201,45 @@ function extractSongs(payload: unknown) {
   }
 
   return []
+}
+
+async function mapSettledWithConcurrency<T, R>(
+  items: T[],
+  concurrency: number,
+  mapper: (item: T) => Promise<R>
+): Promise<PromiseSettledResult<R>[]> {
+  const results = new Array<PromiseSettledResult<R>>(items.length)
+  let nextIndex = 0
+
+  async function worker() {
+    while (nextIndex < items.length) {
+      const index = nextIndex
+      nextIndex += 1
+      const item = items[index]
+
+      if (item === undefined) {
+        continue
+      }
+
+      try {
+        results[index] = {
+          status: "fulfilled",
+          value: await mapper(item),
+        }
+      } catch (reason) {
+        results[index] = {
+          status: "rejected",
+          reason,
+        }
+      }
+    }
+  }
+
+  await Promise.all(
+    Array.from({ length: Math.min(concurrency, items.length) }, worker)
+  )
+
+  return results
 }
 
 function mapBackendSongToTracks(song: BackendSong): Array<Track | null> {
@@ -290,11 +340,7 @@ function mapBackendSongToTrack(
     duration,
     dateAdded,
     audioUrl: getAudioUrl(song, id, options.audioKind),
-    coverUrl: getCoverUrl(
-      song,
-      options.coverRecordId ?? id,
-      options.audioKind
-    ),
+    coverUrl: getCoverUrl(song, options.coverRecordId ?? id, options.audioKind),
     videoJobId: firstString(song.video_job_id, song.videoJobId),
     videoStatus: firstString(song.video_status, song.videoStatus),
     videoUrl: firstString(song.video_url, song.videoUrl),
@@ -415,7 +461,7 @@ function getCoverUrl(
       song.cover_path,
       song.coverPath
     ) &&
-      firstString(song.image_mime_type, song.imageMimeType, song.cover_mime_type)
+    firstString(song.image_mime_type, song.imageMimeType, song.cover_mime_type)
   )
 
   if (!hasStoredImage) {

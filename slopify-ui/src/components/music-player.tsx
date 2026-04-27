@@ -1,13 +1,13 @@
-import { useEffect, useRef, useState } from "react"
+import { memo, useEffect, useRef, useState } from "react"
 import { Pause, Play, SkipBack, SkipForward, Volume2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Slider } from "@/components/ui/slider"
-import { useSlopifyAppContext } from "@/components/slopify-app-context"
+import { useSlopifyPlayback } from "@/components/slopify-app-context"
 import { refreshTrack } from "@/lib/tracks"
 
-export function MusicPlayer() {
+export const MusicPlayer = memo(function MusicPlayer() {
   const { currentTrack, queue, setCurrentTrack, setQueue } =
-    useSlopifyAppContext()
+    useSlopifyPlayback()
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [progress, setProgress] = useState([0])
@@ -152,7 +152,7 @@ export function MusicPlayer() {
   }
 
   return (
-    <footer className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/84 text-foreground shadow-[0_-18px_62px_rgba(0,0,0,0.5)] backdrop-blur-xl">
+    <footer className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/88 text-foreground shadow-[0_-10px_34px_rgba(0,0,0,0.42)] backdrop-blur-md">
       {currentTrack?.audioUrl ? (
         <audio
           ref={audioRef}
@@ -165,7 +165,8 @@ export function MusicPlayer() {
         <div className="min-w-0 rounded-[3px] border border-border bg-surface/80 px-4 py-3 shadow-[inset_0_1px_0_rgba(238,244,237,0.05)]">
           <div className="flex items-center gap-3">
             <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-[3px] border border-border bg-muted/45 shadow-inner shadow-black/30">
-              {currentTrack?.videoStatus === "completed" && currentTrack.videoUrl ? (
+              {currentTrack?.videoStatus === "completed" &&
+              currentTrack.videoUrl ? (
                 <video
                   src={currentTrack.videoUrl}
                   poster={currentTrack.coverUrl || undefined}
@@ -290,7 +291,7 @@ export function MusicPlayer() {
       </div>
     </footer>
   )
-}
+})
 
 function formatProgressTime(seconds: number) {
   if (!Number.isFinite(seconds) || seconds <= 0) {
