@@ -105,10 +105,23 @@ export function createDraftId() {
 }
 
 export function saveCreateDraft(draft: CreateDraft) {
-  sessionStorage.setItem(
-    `${DRAFT_STORAGE_PREFIX}${draft.id}`,
-    JSON.stringify(draft)
-  )
+  const storageKey = `${DRAFT_STORAGE_PREFIX}${draft.id}`
+
+  try {
+    sessionStorage.setItem(storageKey, JSON.stringify(draft))
+  } catch (error) {
+    if (!isStorageQuotaExceeded(error)) {
+      throw error
+    }
+
+    const draftWithoutCover = {
+      ...draft,
+      coverImageBase64: null,
+      coverImageMimeType: null,
+    }
+
+    sessionStorage.setItem(storageKey, JSON.stringify(draftWithoutCover))
+  }
 }
 
 export function clearCreateDraft(draftId: string) {
@@ -168,6 +181,14 @@ export function loadDraftIdForSession(sessionId: string) {
 
 export function clearSessionDraftLink(sessionId: string) {
   sessionStorage.removeItem(`${SESSION_DRAFT_STORAGE_PREFIX}${sessionId}`)
+}
+
+function isStorageQuotaExceeded(error: unknown) {
+  return (
+    error instanceof DOMException &&
+    (error.name === "QuotaExceededError" ||
+      error.name === "NS_ERROR_DOM_QUOTA_REACHED")
+  )
 }
 
 export function buildMusicPrompt(prompt: string, options: CreateOptions) {
