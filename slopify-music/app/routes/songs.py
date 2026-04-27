@@ -525,18 +525,22 @@ def select_song_variant(
     repository: SupabaseSongsRepository = Depends(get_song_repository),
 ) -> SongVariantSelectionResponse:
     try:
+        session = repository.get_song_session(session_id)
+        if session.selected_variant_id or session.selected_song_id:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="A song has already been selected for this session.",
+            )
         variant = repository.get_song_variant(variant_id)
         if variant.status != "completed" or not variant.storage_path or not variant.mime_type:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="Only completed song variants can be selected.",
             )
-        repository.select_song_variant(session_id, variant_id)
-        session = repository.get_song_session(session_id)
-        variant = maybe_start_song_variant_video_generation(
+        song = repository.select_song_variant(session_id, variant_id)
+        maybe_start_song_video_generation(
             repository=repository,
-            session=session,
-            variant=variant,
+            song=song,
         )
         session = repository.get_song_session(session_id)
         return SongVariantSelectionResponse(session=session, selected_variant=variant)

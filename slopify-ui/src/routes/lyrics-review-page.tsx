@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "@tanstack/react-router"
 import { Image as ImageIcon, Loader2, RefreshCcw } from "lucide-react"
 import {
   buildMusicPrompt,
+  linkSessionToDraft,
   formatCreateDuration,
   loadCreateDraft,
   saveCreateDraft,
@@ -136,6 +137,7 @@ export function LyricsReviewPage() {
         enrichedPrompt,
         lyrics: trimmedLyrics,
       })
+      linkSessionToDraft(session.id, draft.id)
 
       void navigate({
         to: "/create/$sessionId",

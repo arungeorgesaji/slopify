@@ -101,7 +101,8 @@ async function fetchSelectedSessionTracks(): Promise<Track[]> {
 
   const payload = (await response.json()) as unknown
   const sessions = extractSongs(payload).filter((session) =>
-    firstString(session.selected_variant_id, session.selectedVariantId)
+    firstString(session.selected_variant_id, session.selectedVariantId) &&
+    !firstString(session.selected_song_id, session.selectedSongId)
   )
   const sessionIds = sessions
     .map((session) => firstString(session.id, session.session_id, session.uuid))
@@ -230,15 +231,13 @@ function mapSelectedSessionVariantToTrack(session: BackendSong): Track | null {
     return null
   }
 
-  const variationIndex = firstNumber(selectedVariant.variant_index)
-
   return mapBackendSongToTrack(
     { ...session, ...selectedVariant },
     {
       audioKind: "variant",
       includeVariationInId: false,
-      variationIndex: variationIndex ?? undefined,
       coverRecordId: sessionId,
+      suppressVariationLabel: true,
     }
   )
 }
@@ -250,6 +249,7 @@ function mapBackendSongToTrack(
     includeVariationInId?: boolean
     variationIndex?: number
     coverRecordId?: string
+    suppressVariationLabel?: boolean
   }
 ): Track | null {
   const id = firstString(song.id, song.song_id, song.uuid)
@@ -269,9 +269,10 @@ function mapBackendSongToTrack(
   const vibe =
     firstString(song.genre, song.style, song.mood, song.vibe, song.status) ||
     "unknown"
-  const variationLabel =
-    firstString(song.variation, song.variant, song.version, song.label) ||
-    (options.variationIndex ? `Variation ${options.variationIndex}` : "")
+  const variationLabel = options.suppressVariationLabel
+    ? ""
+    : firstString(song.variation, song.variant, song.version, song.label) ||
+      (options.variationIndex ? `Variation ${options.variationIndex}` : "")
   const trackId =
     options.includeVariationInId && options.variationIndex
       ? `${id}-${options.variationIndex}`

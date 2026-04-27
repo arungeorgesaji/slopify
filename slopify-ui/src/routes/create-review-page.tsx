@@ -5,6 +5,11 @@ import { Check, Image as ImageIcon, Loader2 } from "lucide-react"
 import { buildApiUrl } from "@/lib/api"
 import { API_ENDPOINTS } from "@/lib/constants"
 import {
+  clearCreateDraft,
+  clearSessionDraftLink,
+  loadDraftIdForSession,
+} from "@/lib/create-flow"
+import {
   fetchSongSession,
   firstNumber,
   firstString,
@@ -63,10 +68,15 @@ export function CreateReviewPage() {
     }
 
     setApprovingVariantId(variant.id)
-    setFeedback("Adding selected variation to your album.")
+    setFeedback("Adding selected song to your album.")
 
     try {
       await selectSongVariant(session.id, variant.id)
+      const draftId = loadDraftIdForSession(session.id)
+      if (draftId) {
+        clearCreateDraft(draftId)
+      }
+      clearSessionDraftLink(session.id)
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["tracks"] }),
         queryClient.invalidateQueries({
@@ -78,9 +88,9 @@ export function CreateReviewPage() {
       const errorMessage =
         approvalError instanceof Error
           ? approvalError.message
-          : "Unknown approval error"
+          : "Unknown selection error"
 
-      setFeedback(`Could not add variation: ${errorMessage}`)
+      setFeedback(`Could not add song: ${errorMessage}`)
     } finally {
       setApprovingVariantId(null)
     }
@@ -111,7 +121,7 @@ export function CreateReviewPage() {
         <div className="text-center">
           <p className="terminal-label">generation review / choose output</p>
           <h1 className="mt-2 text-4xl font-black tracking-[-0.04em] text-foreground sm:text-6xl">
-            Pick your variation
+            Pick your song
           </h1>
           <p className="mx-auto mt-3 max-w-2xl text-sm text-muted-foreground">
             Preview each generated track, read the returned lyrics or prompt,
@@ -122,7 +132,7 @@ export function CreateReviewPage() {
         {isLoading ? (
           <div className="hud-panel mx-auto flex w-full max-w-3xl items-center justify-center gap-3 rounded-[5px] px-6 py-10 font-mono text-sm font-bold tracking-[0.12em] text-muted-foreground uppercase">
             <Loader2 className="size-5 animate-spin text-acid" />
-            Loading variations
+            Loading songs
           </div>
         ) : null}
 
@@ -130,7 +140,7 @@ export function CreateReviewPage() {
           <div className="mx-auto w-full max-w-3xl rounded-[4px] border border-destructive/45 bg-destructive/10 px-5 py-4 text-sm text-destructive">
             {error instanceof Error
               ? error.message
-              : "Could not load generated variations."}
+              : "Could not load generated songs."}
           </div>
         ) : null}
 
@@ -197,6 +207,7 @@ export function CreateReviewPage() {
                 const audioUrl = canApprove ? getVariantAudioUrl(variant) : ""
                 const isSelected = session.selected_variant_id === variant.id
                 const isApproving = approvingVariantId === variant.id
+                const hasSelectedSong = Boolean(session.selected_variant_id)
 
                 return (
                   <article
@@ -208,7 +219,7 @@ export function CreateReviewPage() {
                     <div className="flex items-start justify-between gap-3 border-b border-border pb-4">
                       <div className="min-w-0">
                         <p className="terminal-label">
-                          variation{" "}
+                          track{" "}
                           {String(getVariantIndex(variant)).padStart(2, "0")}
                         </p>
                         <h2 className="mt-2 truncate text-2xl font-black tracking-[-0.02em]">
@@ -232,7 +243,7 @@ export function CreateReviewPage() {
                       ) : (
                         <p className="rounded-[3px] border border-border bg-background/40 px-3 py-3 text-sm text-muted-foreground">
                           {firstString(variant.error_message) ||
-                            "Audio is not available for this variation."}
+                            "Audio is not available for this track."}
                         </p>
                       )}
                     </div>
@@ -247,13 +258,15 @@ export function CreateReviewPage() {
                         variant={isSelected ? "secondary" : "default"}
                         className="h-10 rounded-[3px] px-4"
                         onClick={() => void handleApprove(variant)}
-                        disabled={!canApprove || isApproving || isSelected}
+                        disabled={!canApprove || isApproving || hasSelectedSong}
                       >
                         {isSelected ? (
                           <>
                             <Check className="size-4" />
                             Added
                           </>
+                        ) : hasSelectedSong ? (
+                          "Locked"
                         ) : isApproving ? (
                           <>
                             <Loader2 className="size-4 animate-spin" />

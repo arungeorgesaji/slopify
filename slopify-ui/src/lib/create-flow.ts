@@ -21,6 +21,7 @@ export type CreateDraft = {
 }
 
 const DRAFT_STORAGE_PREFIX = "slopify:create-draft:"
+const SESSION_DRAFT_STORAGE_PREFIX = "slopify:create-session-draft:"
 
 export const DEFAULT_CREATE_OPTIONS: CreateOptions = {
   vocalDirection: "Any lead vocal",
@@ -110,6 +111,10 @@ export function saveCreateDraft(draft: CreateDraft) {
   )
 }
 
+export function clearCreateDraft(draftId: string) {
+  sessionStorage.removeItem(`${DRAFT_STORAGE_PREFIX}${draftId}`)
+}
+
 export function loadCreateDraft(draftId: string) {
   const value = sessionStorage.getItem(`${DRAFT_STORAGE_PREFIX}${draftId}`)
 
@@ -151,6 +156,18 @@ export function loadCreateDraft(draftId: string) {
   } catch {
     return null
   }
+}
+
+export function linkSessionToDraft(sessionId: string, draftId: string) {
+  sessionStorage.setItem(`${SESSION_DRAFT_STORAGE_PREFIX}${sessionId}`, draftId)
+}
+
+export function loadDraftIdForSession(sessionId: string) {
+  return sessionStorage.getItem(`${SESSION_DRAFT_STORAGE_PREFIX}${sessionId}`)
+}
+
+export function clearSessionDraftLink(sessionId: string) {
+  sessionStorage.removeItem(`${SESSION_DRAFT_STORAGE_PREFIX}${sessionId}`)
 }
 
 export function buildMusicPrompt(prompt: string, options: CreateOptions) {

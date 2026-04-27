@@ -159,6 +159,7 @@ class SongSessionRecord(BaseModel):
     candidate_count: int
     status: str
     selected_variant_id: UUID | None = None
+    selected_song_id: UUID | None = None
     image_storage_bucket: str | None = None
     image_storage_path: str | None = None
     image_mime_type: str | None = None

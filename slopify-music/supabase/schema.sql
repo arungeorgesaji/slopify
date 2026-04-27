@@ -83,6 +83,7 @@ create table if not exists public.song_sessions (
     candidate_count integer not null default 1 check (candidate_count between 1 and 4),
     status text not null default 'processing' check (status in ('processing', 'completed', 'partial', 'failed')),
     selected_variant_id uuid null,
+    selected_song_id uuid null references public.songs(id) on delete set null,
     image_storage_bucket text not null default 'generated-images',
     image_storage_path text null unique,
     image_mime_type text null,
@@ -100,6 +101,9 @@ add column if not exists image_storage_path text null unique;
 
 alter table public.song_sessions
 add column if not exists image_mime_type text null;
+
+alter table public.song_sessions
+add column if not exists selected_song_id uuid null references public.songs(id) on delete set null;
 
 drop trigger if exists song_sessions_set_updated_at on public.song_sessions;
 create trigger song_sessions_set_updated_at

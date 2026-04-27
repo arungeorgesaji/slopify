@@ -23,6 +23,7 @@ export type SongSessionDetail = Record<string, unknown> & {
   prompt?: string | null
   lyrics?: string | null
   selected_variant_id?: string | null
+  selected_song_id?: string | null
   image_storage_path?: string | null
   image_mime_type?: string | null
   variants: SongVariantRecord[]
