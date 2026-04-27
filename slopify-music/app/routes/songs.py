@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 from concurrent.futures import Future, ThreadPoolExecutor
 from functools import lru_cache
 from io import BytesIO
@@ -10,6 +11,8 @@ from fastapi.responses import StreamingResponse
 
 from app.config import get_settings
 from app.models import (
+    GenerateCoverImageRequest,
+    GenerateCoverImageResponse,
     SongGenerateRequest,
     SongListResponse,
     SongRecord,
@@ -124,6 +127,16 @@ def start_cover_generation(
     return executor, future
 
 
+def require_image_service() -> OpenAIImageService:
+    image_service = get_optional_image_service()
+    if image_service is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Cover image generation is not configured.",
+        )
+    return image_service
+
+
 def maybe_attach_song_cover(
     *,
     repository: SupabaseSongsRepository,
@@ -166,6 +179,36 @@ def maybe_attach_song_session_cover(
     finally:
         if executor is not None:
             executor.shutdown(wait=False)
+
+
+@router.post(
+    "/cover/generate",
+    response_model=GenerateCoverImageResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def generate_cover_image(
+    request: GenerateCoverImageRequest,
+) -> GenerateCoverImageResponse:
+    image_service = require_image_service()
+    try:
+        image_bytes, mime_type = image_service.generate_cover_image(
+            title=request.title,
+            prompt=request.prompt,
+            lyrics=request.lyrics,
+        )
+    except OpenAIImageError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail={
+                "message": "Cover image generation failed.",
+                "provider_error": str(exc),
+            },
+        ) from exc
+
+    return GenerateCoverImageResponse(
+        image_base64=base64.b64encode(image_bytes).decode("ascii"),
+        mime_type=mime_type,
+    )
 
 
 @router.post(
