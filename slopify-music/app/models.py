@@ -16,6 +16,8 @@ class SongGenerationRequest(BaseModel):
     model_id: str = Field(default="music_v1", max_length=100)
     force_instrumental: bool = False
     respect_sections_durations: bool = False
+    cover_image_base64: str | None = None
+    cover_image_mime_type: str | None = None
     user_id: UUID | None = None
 
     @model_validator(mode="after")
@@ -29,6 +31,10 @@ class SongGenerationRequest(BaseModel):
         if self.force_instrumental and self.composition_plan is not None:
             raise ValueError(
                 "`force_instrumental` is only supported when generating from `prompt`."
+            )
+        if bool(self.cover_image_base64) != bool(self.cover_image_mime_type):
+            raise ValueError(
+                "Provide both `cover_image_base64` and `cover_image_mime_type` together."
             )
         return self
 

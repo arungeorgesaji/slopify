@@ -137,6 +137,23 @@ def start_cover_generation(
     return executor, future
 
 
+def decode_supplied_cover_image(
+    *,
+    image_base64: str | None,
+    mime_type: str | None,
+) -> tuple[bytes, str] | None:
+    if not image_base64 or not mime_type:
+        return None
+
+    try:
+        return base64.b64decode(image_base64, validate=True), mime_type
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Provided cover image was not valid base64.",
+        )
+
+
 def clamp_video_duration_seconds(duration_ms: int | None) -> int:
     if duration_ms is None:
         return 8
@@ -321,6 +338,32 @@ def maybe_attach_song_session_cover(
             executor.shutdown(wait=False)
 
 
+def attach_supplied_song_cover(
+    *,
+    repository: SupabaseSongsRepository,
+    song_id: UUID,
+    image_bytes: bytes,
+    mime_type: str,
+) -> None:
+    try:
+        repository.attach_song_cover(song_id, image_bytes, mime_type)
+    except Exception:
+        return
+
+
+def attach_supplied_song_session_cover(
+    *,
+    repository: SupabaseSongsRepository,
+    session_id: UUID,
+    image_bytes: bytes,
+    mime_type: str,
+) -> None:
+    try:
+        repository.attach_song_session_cover(session_id, image_bytes, mime_type)
+    except Exception:
+        return
+
+
 @router.post(
     "/cover/generate",
     response_model=GenerateCoverImageResponse,
@@ -365,11 +408,18 @@ def generate_song(
         update={"title": resolve_generated_title(request.lyrics, request.title)}
     )
     song = repository.create_song(request)
-    image_executor, image_future = start_cover_generation(
-        title=request.title,
-        prompt=request.prompt,
-        lyrics=request.lyrics,
+    supplied_cover = decode_supplied_cover_image(
+        image_base64=request.cover_image_base64,
+        mime_type=request.cover_image_mime_type,
     )
+    image_executor: ThreadPoolExecutor | None = None
+    image_future: Future[tuple[bytes, str]] | None = None
+    if supplied_cover is None:
+        image_executor, image_future = start_cover_generation(
+            title=request.title,
+            prompt=request.prompt,
+            lyrics=request.lyrics,
+        )
     try:
         generated_song = music_service.generate_song(request)
         completed_song = repository.mark_song_completed(
@@ -377,12 +427,21 @@ def generate_song(
             audio_bytes=generated_song.audio_bytes,
             mime_type=generated_song.mime_type,
         )
-        maybe_attach_song_cover(
-            repository=repository,
-            song_id=song.id,
-            executor=image_executor,
-            future=image_future,
-        )
+        if supplied_cover is not None:
+            image_bytes, mime_type = supplied_cover
+            attach_supplied_song_cover(
+                repository=repository,
+                song_id=song.id,
+                image_bytes=image_bytes,
+                mime_type=mime_type,
+            )
+        else:
+            maybe_attach_song_cover(
+                repository=repository,
+                song_id=song.id,
+                executor=image_executor,
+                future=image_future,
+            )
         final_song = repository.get_song(completed_song.id)
         return maybe_start_song_video_generation(
             repository=repository,
@@ -421,11 +480,18 @@ def generate_song_session(
         update={"title": resolve_generated_title(request.lyrics, request.title)}
     )
     session = repository.create_song_session(request)
-    image_executor, image_future = start_cover_generation(
-        title=request.title,
-        prompt=request.prompt,
-        lyrics=request.lyrics,
+    supplied_cover = decode_supplied_cover_image(
+        image_base64=request.cover_image_base64,
+        mime_type=request.cover_image_mime_type,
     )
+    image_executor: ThreadPoolExecutor | None = None
+    image_future: Future[tuple[bytes, str]] | None = None
+    if supplied_cover is None:
+        image_executor, image_future = start_cover_generation(
+            title=request.title,
+            prompt=request.prompt,
+            lyrics=request.lyrics,
+        )
     for variant_index in range(1, request.candidate_count + 1):
         variant = repository.create_song_variant(session.id, request, variant_index)
         try:
@@ -440,12 +506,21 @@ def generate_song_session(
         except Exception as exc:
             repository.mark_song_variant_failed(variant.id, str(exc))
 
-    maybe_attach_song_session_cover(
-        repository=repository,
-        session_id=session.id,
-        executor=image_executor,
-        future=image_future,
-    )
+    if supplied_cover is not None:
+        image_bytes, mime_type = supplied_cover
+        attach_supplied_song_session_cover(
+            repository=repository,
+            session_id=session.id,
+            image_bytes=image_bytes,
+            mime_type=mime_type,
+        )
+    else:
+        maybe_attach_song_session_cover(
+            repository=repository,
+            session_id=session.id,
+            executor=image_executor,
+            future=image_future,
+        )
     detail = repository.finalize_song_session(session.id)
     if all(variant.status == "failed" for variant in detail.variants):
         raise HTTPException(
