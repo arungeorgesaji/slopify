@@ -1,0 +1,240 @@
+{
+  "info": {
+    "_postman_id": "76dd6720-e0fd-4c12-9183-752425c6a50b",
+    "name": "Slopify Music API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Postman collection for the FastAPI backend mounted at https://web-production-4b492.up.railway.app."
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://web-production-4b492.up.railway.app"
+    },
+    {
+      "key": "songId",
+      "value": "00000000-0000-0000-0000-000000000000"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "GET /healthz",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/healthz",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "healthz"
+              ]
+            },
+            "description": "Health check endpoint."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Prompt",
+      "item": [
+        {
+          "name": "POST /enhance-prompt",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"prompt\": \"cinematic indie pop with warm synths and a big chorus\",\n  \"model\": \"gpt-5.4-mini\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/enhance-prompt",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "enhance-prompt"
+              ]
+            },
+            "description": "Enhance a raw music idea into a better generation prompt."
+          },
+          "response": []
+        },
+        {
+          "name": "POST /generate-lyrics",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"prompt\": \"Write melancholic synthwave lyrics about missing the last train home\",\n  \"model\": \"gpt-5.4-mini\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/generate-lyrics",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "generate-lyrics"
+              ]
+            },
+            "description": "Generate song lyrics from a user prompt."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Songs",
+      "item": [
+        {
+          "name": "POST /api/v1/songs/generate",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Midnight Drive\",\n  \"prompt\": \"neon synthwave production with pulsing bass, gated drums, and a wide cinematic chorus\",\n  \"lyrics\": \"City lights blur in the rearview glow\\nI keep chasing echoes down an empty road\\nEvery signal fades but I still hear your name\\nMidnight keeps on driving me through the same old flame\",\n  \"music_length_ms\": 40000,\n  \"model_id\": \"music_v1\",\n  \"force_instrumental\": false,\n  \"respect_sections_durations\": false,\n  \"user_id\": null\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/songs/generate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "songs",
+                "generate"
+              ]
+            },
+            "description": "Generate a song from a prompt, optionally with separate `lyrics`. Provide exactly one of `prompt` or `composition_plan`."
+          },
+          "response": []
+        },
+        {
+          "name": "POST /api/v1/songs/generate (composition_plan)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Sunrise Build\",\n  \"composition_plan\": {\n    \"style\": \"uplifting progressive house\",\n    \"sections\": [\n      {\n        \"name\": \"intro\",\n        \"duration_ms\": 15000,\n        \"description\": \"filtered pads and soft kick\"\n      },\n      {\n        \"name\": \"drop\",\n        \"duration_ms\": 30000,\n        \"description\": \"wide supersaws and energetic bass\"\n      }\n    ]\n  },\n  \"music_length_ms\": 60000,\n  \"model_id\": \"music_v1\",\n  \"respect_sections_durations\": true,\n  \"user_id\": null\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/songs/generate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "songs",
+                "generate"
+              ]
+            },
+            "description": "Generate a song from a composition plan. Do not send `force_instrumental` with this shape."
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/v1/songs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/songs?limit=20&offset=0",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "songs"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "offset",
+                  "value": "0"
+                }
+              ]
+            },
+            "description": "List songs with pagination. Limit range is 1-100."
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/v1/songs/{song_id}",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/songs/{{songId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "songs",
+                "{{songId}}"
+              ]
+            },
+            "description": "Fetch a single song record by UUID."
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/v1/songs/{song_id}/audio",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/songs/{{songId}}/audio",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "songs",
+                "{{songId}}",
+                "audio"
+              ]
+            },
+            "description": "Stream generated song audio for a completed song."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
