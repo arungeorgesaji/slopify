@@ -50,13 +50,17 @@ class AlbumVideoService:
             "title": title or "Untitled song",
             "artistName": artist_name or "Slopify AI",
             "lyrics": (lyrics or "Instrumental mood piece").strip(),
-            "genre": genre,
-            "mood": mood,
-            "theme": theme,
             "durationSeconds": duration_seconds,
             "aspectRatio": aspect_ratio,
             "resolution": resolution,
         }
+
+        if genre:
+            payload["genre"] = genre
+        if mood:
+            payload["mood"] = mood
+        if theme:
+            payload["theme"] = theme
 
         try:
             response = httpx.post(
