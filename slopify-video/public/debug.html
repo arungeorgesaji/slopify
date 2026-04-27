@@ -1,0 +1,690 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lyrics-to-Album-Video Debug Console</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #080c12;
+        --panel: #101826;
+        --panel-2: #0c1320;
+        --line: #263752;
+        --text: #edf4ff;
+        --muted: #9aa8c2;
+        --brand: #34d7bd;
+        --brand-2: #5aa7ff;
+        --danger: #ff7488;
+        --ok: #78e5a1;
+        --warn: #f2c36b;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background:
+          linear-gradient(180deg, rgba(52, 215, 189, 0.08), transparent 24rem),
+          var(--bg);
+        color: var(--text);
+        font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      }
+
+      .page {
+        margin: 0 auto;
+        max-width: 1340px;
+        padding: 24px;
+      }
+
+      header {
+        align-items: end;
+        display: grid;
+        gap: 16px;
+        grid-template-columns: minmax(0, 1fr) auto;
+        margin-bottom: 16px;
+      }
+
+      h1,
+      h2,
+      h3,
+      p {
+        margin: 0;
+      }
+
+      h1 {
+        font-size: 32px;
+        line-height: 1.05;
+      }
+
+      h2 {
+        font-size: 16px;
+        margin-bottom: 12px;
+      }
+
+      h3 {
+        font-size: 13px;
+        margin-bottom: 8px;
+      }
+
+      .subtle {
+        color: var(--muted);
+      }
+
+      .pipeline {
+        align-items: center;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        justify-content: flex-end;
+      }
+
+      .chip {
+        background: #0d1828;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        color: #dbe7ff;
+        font-size: 13px;
+        font-weight: 700;
+        padding: 8px 10px;
+      }
+
+      .arrow {
+        color: var(--muted);
+      }
+
+      .layout {
+        display: grid;
+        gap: 16px;
+        grid-template-columns: minmax(0, 1.25fr) minmax(360px, 0.75fr);
+      }
+
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 16px;
+      }
+
+      .panel + .panel {
+        margin-top: 16px;
+      }
+
+      .form-grid {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .span-2 {
+        grid-column: 1 / -1;
+      }
+
+      label {
+        color: var(--muted);
+        display: grid;
+        font-size: 13px;
+        font-weight: 700;
+        gap: 6px;
+      }
+
+      input,
+      select,
+      textarea,
+      button {
+        font: inherit;
+      }
+
+      input,
+      select,
+      textarea {
+        background: var(--panel-2);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        color: var(--text);
+        outline: none;
+        padding: 10px 11px;
+        width: 100%;
+      }
+
+      textarea {
+        min-height: 220px;
+        resize: vertical;
+      }
+
+      input:focus,
+      select:focus,
+      textarea:focus {
+        border-color: var(--brand);
+        box-shadow: 0 0 0 3px rgba(52, 215, 189, 0.16);
+      }
+
+      button {
+        background: var(--brand);
+        border: 0;
+        border-radius: 8px;
+        color: #04110f;
+        cursor: pointer;
+        font-weight: 800;
+        padding: 10px 14px;
+      }
+
+      button.secondary {
+        background: #183252;
+        color: #dcebff;
+      }
+
+      button.danger {
+        background: #3b1d2a;
+        color: #ffd8df;
+      }
+
+      button:disabled {
+        cursor: wait;
+        opacity: 0.58;
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 14px;
+      }
+
+      .stats {
+        display: grid;
+        gap: 10px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .stat {
+        background: var(--panel-2);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        min-height: 66px;
+        padding: 10px;
+      }
+
+      .stat span {
+        color: var(--muted);
+        display: block;
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      .stat strong {
+        display: block;
+        margin-top: 6px;
+        overflow-wrap: anywhere;
+      }
+
+      .box,
+      pre {
+        background: var(--panel-2);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        color: #e9f1ff;
+        margin: 0;
+        min-height: 90px;
+        overflow: auto;
+        padding: 12px;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+
+      pre {
+        font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+        font-size: 12px;
+        max-height: 340px;
+      }
+
+      .status {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        color: var(--muted);
+        padding: 10px 12px;
+      }
+
+      .status.ok {
+        border-color: rgba(120, 229, 161, 0.45);
+        color: var(--ok);
+      }
+
+      .status.warn {
+        border-color: rgba(242, 195, 107, 0.45);
+        color: var(--warn);
+      }
+
+      .status.err {
+        border-color: rgba(255, 116, 136, 0.45);
+        color: var(--danger);
+      }
+
+      video {
+        background: #05080d;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        display: block;
+        max-height: 320px;
+        object-fit: contain;
+        width: 100%;
+      }
+
+      .timeline {
+        display: grid;
+        gap: 8px;
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+
+      .timeline li {
+        background: var(--panel-2);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        color: var(--muted);
+        font-size: 13px;
+        padding: 9px 10px;
+      }
+
+      .right-head {
+        align-items: center;
+        display: flex;
+        gap: 8px;
+        justify-content: space-between;
+      }
+
+      .copy-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        justify-content: flex-end;
+        margin-bottom: 10px;
+      }
+
+      @media (max-width: 980px) {
+        header,
+        .layout {
+          grid-template-columns: 1fr;
+        }
+
+        .pipeline {
+          justify-content: flex-start;
+        }
+      }
+
+      @media (max-width: 640px) {
+        .page {
+          padding: 14px;
+        }
+
+        .form-grid,
+        .stats {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <header>
+        <div>
+          <h1>Lyrics-to-Album-Video Debug Console</h1>
+        <p class="subtle">Generate starts an async job and returns success immediately. Use logs or status lookup for details.</p>
+        </div>
+        <div class="pipeline" aria-label="Current pipeline">
+          <span class="chip">GPT-4.1 Prompt</span>
+          <span class="arrow">→</span>
+          <span class="chip">OpenAI Sora</span>
+          <span class="arrow">→</span>
+          <span class="chip">Supabase URL</span>
+        </div>
+      </header>
+
+      <section class="layout">
+        <div>
+          <section class="panel">
+            <h2>Generate Album Video</h2>
+            <form id="generate-form">
+              <div class="form-grid">
+                <label>
+                  Song ID
+                  <input id="songId" name="songId" value="song_123" required />
+                </label>
+                <label>
+                  Title
+                  <input id="title" name="title" value="Hackathon King" required />
+                </label>
+                <label>
+                  Artist Name
+                  <input id="artistName" name="artistName" value="Aman Mohammed" />
+                </label>
+                <label>
+                  Genre
+                  <input id="genre" name="genre" value="electronic pop" />
+                </label>
+                <label>
+                  Mood
+                  <input id="mood" name="mood" value="triumphant, futuristic" />
+                </label>
+                <label>
+                  Theme
+                  <input id="theme" name="theme" value="innovation and victory" />
+                </label>
+                <label>
+                  Duration
+                  <select id="durationSeconds" name="durationSeconds">
+                    <option value="4">4 seconds</option>
+                    <option value="6">6 seconds</option>
+                    <option value="8" selected>8 seconds</option>
+                  </select>
+                </label>
+                <label>
+                  Aspect Ratio
+                  <select id="aspectRatio" name="aspectRatio">
+                    <option value="16:9" selected>16:9</option>
+                    <option value="9:16">9:16</option>
+                    <option value="1:1">1:1</option>
+                  </select>
+                </label>
+                <label>
+                  Resolution
+                  <select id="resolution" name="resolution">
+                    <option value="720p" selected>720p</option>
+                    <option value="1080p">1080p</option>
+                  </select>
+                </label>
+                <label class="span-2">
+                  Lyrics
+                  <textarea id="lyrics" name="lyrics" required>Verse
+Rising through the static, neon dreams ignite,
+Building something fearless in the midnight light.
+
+Chorus
+Pushing boundaries, innovating with might,
+Got that winning feeling, shining so bright.
+
+Outro
+Yeah! Hackathon king!</textarea>
+                </label>
+              </div>
+              <div class="actions">
+                <button id="generate-btn" type="submit">Generate Album Video</button>
+                <button class="secondary" id="sample-btn" type="button">Load Sample</button>
+                <button class="danger" id="clear-btn" type="button">Clear Output</button>
+              </div>
+            </form>
+          </section>
+
+          <section class="panel">
+            <div class="right-head">
+              <h2>Generation Output</h2>
+              <div class="copy-row">
+                <button class="secondary" id="copy-prompt-btn" type="button">Copy Prompt</button>
+                <button class="secondary" id="copy-json-btn" type="button">Copy JSON</button>
+              </div>
+            </div>
+            <div class="stats">
+              <div class="stat"><span>Song ID</span><strong id="out-song">-</strong></div>
+              <div class="stat"><span>Job ID</span><strong id="out-job">-</strong></div>
+              <div class="stat"><span>Status</span><strong id="out-status">-</strong></div>
+              <div class="stat"><span>Video URL</span><strong id="out-url">-</strong></div>
+            </div>
+            <h3 style="margin-top: 14px">Album Video Prompt</h3>
+            <div class="box" id="out-prompt">-</div>
+            <h3 style="margin-top: 14px">Video Preview</h3>
+            <video id="video-preview" controls playsinline hidden></video>
+            <h3 style="margin-top: 14px">Raw Generate Response</h3>
+            <pre id="raw-generate">{}</pre>
+          </section>
+        </div>
+
+        <aside>
+          <section class="panel">
+            <h2>Service Health</h2>
+            <div class="actions" style="margin-top: 0">
+              <button id="health-btn" type="button">Check Health</button>
+            </div>
+            <div id="health-status" class="status" style="margin-top: 12px">Idle.</div>
+            <pre id="raw-health" style="margin-top: 12px">{}</pre>
+          </section>
+
+          <section class="panel">
+            <h2>Status Lookup</h2>
+            <label>
+              Job ID
+              <input id="status-job-id" placeholder="Paste jobId or generate first" />
+            </label>
+            <div class="actions">
+              <button id="status-btn" type="button">Check Status</button>
+            </div>
+            <div id="status-message" class="status" style="margin-top: 12px">Idle.</div>
+            <pre id="raw-status" style="margin-top: 12px">{}</pre>
+          </section>
+
+          <section class="panel">
+            <h2>Request Timeline</h2>
+            <ul class="timeline" id="timeline"></ul>
+          </section>
+        </aside>
+      </section>
+    </main>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+
+      const state = {
+        lastGenerate: null,
+        lastPrompt: "",
+        lastJson: "{}"
+      };
+
+      const timeline = $("timeline");
+
+      function addEvent(message) {
+        const item = document.createElement("li");
+        item.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+        timeline.prepend(item);
+      }
+
+      function setStatus(element, message, kind = "") {
+        element.textContent = message;
+        element.className = `status ${kind}`.trim();
+      }
+
+      function renderJson(element, value) {
+        element.textContent = JSON.stringify(value, null, 2);
+      }
+
+      function formPayload() {
+        const optional = (value) => {
+          const trimmed = value.trim();
+          return trimmed ? trimmed : undefined;
+        };
+
+        return {
+          songId: $("songId").value.trim(),
+          title: $("title").value.trim(),
+          lyrics: $("lyrics").value.trim(),
+          artistName: optional($("artistName").value),
+          genre: optional($("genre").value),
+          mood: optional($("mood").value),
+          theme: optional($("theme").value),
+          durationSeconds: Number($("durationSeconds").value),
+          aspectRatio: $("aspectRatio").value,
+          resolution: $("resolution").value
+        };
+      }
+
+      function renderGenerate(data) {
+        state.lastGenerate = data;
+        state.lastPrompt = data.albumVideoPrompt || "";
+        state.lastJson = JSON.stringify(data, null, 2);
+
+        $("out-song").textContent = data.songId || "-";
+        $("out-job").textContent = data.jobId || "-";
+        $("out-status").textContent = data.status || "-";
+        $("out-url").textContent = data.videoUrl || "-";
+        $("out-prompt").textContent = data.albumVideoPrompt || data.error?.message || data.error || "-";
+        $("status-job-id").value = data.jobId || $("status-job-id").value;
+        renderJson($("raw-generate"), data);
+
+        const preview = $("video-preview");
+        if (data.videoUrl) {
+          preview.src = data.videoUrl;
+          preview.hidden = false;
+        } else {
+          preview.removeAttribute("src");
+          preview.hidden = true;
+        }
+      }
+
+      async function requestJson(url, options) {
+        const response = await fetch(url, options);
+        const text = await response.text();
+        let data;
+        try {
+          data = text ? JSON.parse(text) : {};
+        } catch {
+          data = { raw: text };
+        }
+
+        if (!response.ok) {
+          const error = new Error(data.error?.message || `Request failed with ${response.status}`);
+          error.data = data;
+          error.status = response.status;
+          throw error;
+        }
+
+        return data;
+      }
+
+      $("generate-form").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const button = $("generate-btn");
+        button.disabled = true;
+        button.textContent = "Generating...";
+        addEvent(`Generate requested for ${$("songId").value.trim()}`);
+
+        try {
+          const data = await requestJson("/album-video/generate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(formPayload())
+          });
+          renderGenerate(data);
+          addEvent(`Generate completed: ${data.status}`);
+        } catch (error) {
+          const data = error.data || { error: { message: error.message } };
+          renderGenerate({
+            songId: $("songId").value.trim(),
+            jobId: data.jobId || "-",
+            status: "failed",
+            albumVideoPrompt: data.error?.message || error.message,
+            videoUrl: null,
+            error: data.error || error.message
+          });
+          addEvent(`Generate failed: ${data.error?.message || error.message}`);
+        } finally {
+          button.disabled = false;
+          button.textContent = "Generate Album Video";
+        }
+      });
+
+      $("health-btn").addEventListener("click", async () => {
+        setStatus($("health-status"), "Checking...", "warn");
+        try {
+          const data = await requestJson("/health");
+          renderJson($("raw-health"), data);
+          setStatus($("health-status"), "Service healthy.", "ok");
+          addEvent("Health check passed");
+        } catch (error) {
+          renderJson($("raw-health"), error.data || { error: error.message });
+          setStatus($("health-status"), error.message, "err");
+          addEvent(`Health check failed: ${error.message}`);
+        }
+      });
+
+      $("status-btn").addEventListener("click", async () => {
+        const jobId = $("status-job-id").value.trim();
+        if (!jobId) {
+          setStatus($("status-message"), "Enter a jobId first.", "warn");
+          return;
+        }
+
+        setStatus($("status-message"), "Checking status...", "warn");
+        try {
+          const data = await requestJson(`/album-video/status/${encodeURIComponent(jobId)}`);
+          renderJson($("raw-status"), data);
+          setStatus($("status-message"), `Status: ${data.status}`, data.status === "failed" ? "err" : "ok");
+          addEvent(`Status checked: ${data.status}`);
+          if (data.videoUrl || data.albumVideoPrompt) {
+            renderGenerate({ ...state.lastGenerate, ...data });
+          }
+        } catch (error) {
+          renderJson($("raw-status"), error.data || { error: error.message });
+          setStatus($("status-message"), error.message, "err");
+          addEvent(`Status failed: ${error.message}`);
+        }
+      });
+
+      $("copy-prompt-btn").addEventListener("click", async () => {
+        await navigator.clipboard.writeText(state.lastPrompt || "");
+        addEvent("Prompt copied");
+      });
+
+      $("copy-json-btn").addEventListener("click", async () => {
+        await navigator.clipboard.writeText(state.lastJson || "{}");
+        addEvent("JSON copied");
+      });
+
+      $("sample-btn").addEventListener("click", () => {
+        $("songId").value = `song_${Date.now()}`;
+        $("title").value = "Midnight Signal";
+        $("artistName").value = "Demo Artist";
+        $("genre").value = "cinematic synth pop";
+        $("mood").value = "hopeful, electric, nocturnal";
+        $("theme").value = "city lights and renewal";
+        $("durationSeconds").value = "8";
+        $("aspectRatio").value = "16:9";
+        $("resolution").value = "720p";
+        $("lyrics").value = `Verse
+City lights are calling me home through silver rain,
+Signals in the skyline spelling out my name.
+
+Chorus
+I rise through the static, bright and alive,
+Turning every shadow into neon fire.
+
+Outro
+The night opens softly, and I drive.`;
+        addEvent("Sample loaded");
+      });
+
+      $("clear-btn").addEventListener("click", () => {
+        state.lastGenerate = null;
+        state.lastPrompt = "";
+        state.lastJson = "{}";
+        $("out-song").textContent = "-";
+        $("out-job").textContent = "-";
+        $("out-status").textContent = "-";
+        $("out-url").textContent = "-";
+        $("out-prompt").textContent = "-";
+        $("status-job-id").value = "";
+        renderJson($("raw-generate"), {});
+        renderJson($("raw-status"), {});
+        const preview = $("video-preview");
+        preview.removeAttribute("src");
+        preview.hidden = true;
+        addEvent("Output cleared");
+      });
+
+      addEvent("Debugger ready");
+    </script>
+  </body>
+</html>
