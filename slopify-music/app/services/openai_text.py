@@ -48,6 +48,17 @@ Rules:
 - Do not output more than 80 characters.
 """.strip()
 
+VIDEO_THEME_INSTRUCTIONS = """
+You compress song context into a short theme string for downstream video generation.
+
+Rules:
+- Return only the theme text.
+- Preserve the song's core idea, mood, and imagery.
+- Prefer a compact phrase rather than a sentence when possible.
+- Do not add quotation marks, markdown, labels, or explanations.
+- Keep the output at 120 characters or fewer.
+""".strip()
+
 
 class OpenAITextError(Exception):
     """Raised when OpenAI text generation fails."""
@@ -75,6 +86,24 @@ class OpenAITextService:
         return self._generate_text(
             instructions=TITLE_INSTRUCTIONS,
             prompt=self._build_title_input(lyrics),
+            model=model,
+        )
+
+    def generate_video_theme(
+        self,
+        *,
+        title: str | None,
+        prompt: str | None,
+        lyrics: str | None,
+        model: str,
+    ) -> str:
+        return self._generate_text(
+            instructions=VIDEO_THEME_INSTRUCTIONS,
+            prompt=self._build_video_theme_input(
+                title=title,
+                prompt=prompt,
+                lyrics=lyrics,
+            ),
             model=model,
         )
 
@@ -112,6 +141,26 @@ class OpenAITextService:
             "or most emotionally central phrase.\n\n"
             f"Lyrics:\n{cleaned_lyrics}"
         )
+
+    @staticmethod
+    def _build_video_theme_input(
+        *,
+        title: str | None,
+        prompt: str | None,
+        lyrics: str | None,
+    ) -> str:
+        parts: list[str] = [
+            "Compress the following song context into a short theme for album video generation."
+        ]
+
+        if title and title.strip():
+            parts.append(f"Title:\n{title.strip()}")
+        if prompt and prompt.strip():
+            parts.append(f"Prompt:\n{prompt.strip()}")
+        if lyrics and lyrics.strip():
+            parts.append(f"Lyrics:\n{lyrics.strip()}")
+
+        return "\n\n".join(parts)
 
 
 def derive_title_from_lyrics(lyrics: str) -> str:

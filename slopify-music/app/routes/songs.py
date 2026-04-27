@@ -161,6 +161,42 @@ def clamp_video_duration_seconds(duration_ms: int | None) -> int:
     return max(4, min(duration_seconds, 12))
 
 
+def clamp_video_theme(theme: str | None) -> str | None:
+    if not theme:
+        return None
+
+    normalized = " ".join(theme.split()).strip()
+    if not normalized:
+        return None
+
+    return normalized[:120]
+
+
+def resolve_video_theme(
+    *,
+    title: str | None,
+    prompt: str | None,
+    lyrics: str | None,
+) -> str | None:
+    title_service = get_optional_title_service()
+    if title_service is not None:
+        try:
+            theme = title_service.generate_video_theme(
+                title=title,
+                prompt=prompt,
+                lyrics=lyrics,
+                model="gpt-5.4-mini",
+            )
+            clamped = clamp_video_theme(theme)
+            if clamped:
+                return clamped
+        except OpenAITextError:
+            pass
+
+    fallback_source = title or prompt or lyrics
+    return clamp_video_theme(fallback_source)
+
+
 def maybe_start_song_video_generation(
     *,
     repository: SupabaseSongsRepository,
@@ -181,7 +217,11 @@ def maybe_start_song_video_generation(
             lyrics=song.lyrics,
             genre=None,
             mood=None,
-            theme=song.prompt,
+            theme=resolve_video_theme(
+                title=song.title,
+                prompt=song.prompt,
+                lyrics=song.lyrics,
+            ),
             duration_seconds=clamp_video_duration_seconds(song.music_length_ms),
         )
         return repository.mark_song_video_job_started(song.id, started.job_id)
@@ -215,7 +255,11 @@ def maybe_start_song_variant_video_generation(
             lyrics=variant.lyrics or session.lyrics,
             genre=None,
             mood=None,
-            theme=variant.prompt or session.prompt,
+            theme=resolve_video_theme(
+                title=variant.title or session.title,
+                prompt=variant.prompt or session.prompt,
+                lyrics=variant.lyrics or session.lyrics,
+            ),
             duration_seconds=clamp_video_duration_seconds(
                 variant.music_length_ms or session.music_length_ms
             ),
