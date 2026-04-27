@@ -75,6 +75,17 @@ class GenerateLyricsResponse(BaseModel):
     model: str
 
 
+class GenerateCoverImageRequest(BaseModel):
+    title: str | None = Field(default=None, max_length=200)
+    prompt: str | None = Field(default=None, min_length=1, max_length=2000)
+    lyrics: str | None = Field(default=None, min_length=1, max_length=10000)
+
+
+class GenerateCoverImageResponse(BaseModel):
+    image_base64: str
+    mime_type: str
+
+
 class SongRecord(BaseModel):
     id: UUID
     user_id: UUID | None = None
