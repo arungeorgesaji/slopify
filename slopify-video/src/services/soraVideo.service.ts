@@ -31,7 +31,7 @@ const nowIso = (): string => new Date().toISOString();
 export const createQueuedVideoJob = (params: {
   songId: string;
   albumVideoPrompt?: string;
-}): AlbumVideoJob => {
+}): Promise<AlbumVideoJob> => {
   const createdAt = nowIso();
   const job: AlbumVideoJob = {
     jobId: crypto.randomUUID(),
@@ -173,7 +173,7 @@ const downloadSoraVideo = async (providerJobId: string): Promise<{
   };
 };
 
-const failJob = (jobId: string, error: unknown): AlbumVideoJob => {
+const failJob = async (jobId: string, error: unknown): Promise<AlbumVideoJob> => {
   const message = error instanceof Error ? error.message : "Video generation failed";
   console.error(`[sora] video failed for job ${jobId}`, error);
   return updateJob(jobId, {
@@ -215,7 +215,7 @@ const completeSoraJob = async (
     console.error(`[sora] Supabase upload failed for job ${job.jobId}`, error);
   }
 
-  const completed = updateJob(job.jobId, {
+  const completed = await updateJob(job.jobId, {
     status: "completed",
     videoUrl,
     error: null,
@@ -235,18 +235,18 @@ export const generateVideo = async (
   albumVideoPrompt: string,
   options: VideoGenerationOptions
 ): Promise<VideoGenerationResult> => {
-  const job = createQueuedVideoJob({
+  const job = await createQueuedVideoJob({
     songId: options.songId,
     albumVideoPrompt
   });
   const { jobId } = job;
 
   try {
-    updateJob(jobId, { status: "processing", error: null });
+    await updateJob(jobId, { status: "processing", error: null });
     const providerResponse = await createSoraVideo(albumVideoPrompt, options, jobId);
     const status = toAlbumVideoStatus(providerResponse.status);
 
-    const updated = updateJob(jobId, {
+    const updated = await updateJob(jobId, {
       status,
       error: providerResponse.error?.message ?? null,
       providerJobId: providerResponse.id,
@@ -270,7 +270,7 @@ export const generateVideo = async (
       error: updated.error
     };
   } catch (error) {
-    const failed = failJob(jobId, error);
+    const failed = await failJob(jobId, error);
     return {
       jobId,
       status: failed.status,
@@ -286,7 +286,7 @@ export const generateVideoForJob = async (
   options: VideoGenerationOptions
 ): Promise<VideoGenerationResult> => {
   try {
-    updateJob(jobId, {
+    await updateJob(jobId, {
       status: "processing",
       albumVideoPrompt,
       error: null
@@ -294,7 +294,7 @@ export const generateVideoForJob = async (
     const providerResponse = await createSoraVideo(albumVideoPrompt, options, jobId);
     const status = toAlbumVideoStatus(providerResponse.status);
 
-    const updated = updateJob(jobId, {
+    const updated = await updateJob(jobId, {
       status,
       error: providerResponse.error?.message ?? null,
       providerJobId: providerResponse.id,
@@ -318,7 +318,7 @@ export const generateVideoForJob = async (
       error: updated.error
     };
   } catch (error) {
-    const failed = failJob(jobId, error);
+    const failed = await failJob(jobId, error);
     return {
       jobId,
       status: failed.status,
@@ -329,7 +329,7 @@ export const generateVideoForJob = async (
 };
 
 export const getVideoStatus = async (jobId: string): Promise<AlbumVideoJob> => {
-  const job = getJob(jobId);
+  const job = await getJob(jobId);
   if (job.status === "completed" || job.status === "failed" || !job.providerJobId) {
     return job;
   }

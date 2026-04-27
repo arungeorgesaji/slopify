@@ -14,6 +14,7 @@ export function MusicPlayer() {
   const [currentTime, setCurrentTime] = useState(0)
   const [volume, setVolume] = useState([72])
   const [audioError, setAudioError] = useState<string | null>(null)
+  const currentAudioUrl = currentTrack?.audioUrl ?? null
 
   useEffect(() => {
     audioRef.current?.pause()
@@ -27,7 +28,7 @@ export function MusicPlayer() {
     }, 0)
 
     return () => window.clearTimeout(resetTimer)
-  }, [currentTrack])
+  }, [currentAudioUrl])
 
   useEffect(() => {
     if (!audioRef.current) {

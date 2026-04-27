@@ -5,9 +5,17 @@ import {
   createQueuedVideoJob,
   generateVideoForJob
 } from "./soraVideo.service.js";
+import { getJobBySongId } from "../stores/job.store.js";
 
-export const startAlbumVideoGeneration = (input: GenerateAlbumVideoRequest): AlbumVideoJob => {
-  const job = createQueuedVideoJob({
+export const startAlbumVideoGeneration = async (
+  input: GenerateAlbumVideoRequest
+): Promise<AlbumVideoJob> => {
+  const existingJob = await getJobBySongId(input.songId);
+  if (existingJob && existingJob.status !== "failed") {
+    return existingJob;
+  }
+
+  const job = await createQueuedVideoJob({
     songId: input.songId
   });
 
