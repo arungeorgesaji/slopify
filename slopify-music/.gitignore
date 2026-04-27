@@ -1,0 +1,22 @@
+# --- Python & General ---
+*.mp3
+.env
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# --- Frontend (Node/React/Next/Vite) ---
+node_modules/
+dist/
+build/
+.next/
+out/
+.swc/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.DS_Store
+
