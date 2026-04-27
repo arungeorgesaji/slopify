@@ -267,8 +267,6 @@ def maybe_refresh_song_variant_video_status(
         video_url=status_result.video_url,
         error=status_result.error,
     )
-
-
 def require_image_service() -> OpenAIImageService:
     image_service = get_optional_image_service()
     if image_service is None:
