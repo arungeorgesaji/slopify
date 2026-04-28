@@ -1,10 +1,7 @@
 from __future__ import annotations
 
-from functools import lru_cache
+from fastapi import APIRouter, HTTPException, Request, status
 
-from fastapi import APIRouter, HTTPException, status
-
-from app.config import get_settings
 from app.models import (
     EnhancePromptRequest,
     EnhancePromptResponse,
@@ -12,30 +9,34 @@ from app.models import (
     GenerateLyricsResponse,
 )
 from app.services.openai_text import OpenAITextError, OpenAITextService
+from app.services.provider_keys import resolve_openai_api_key
 
 router = APIRouter(tags=["prompt"])
 
 
-@lru_cache(maxsize=1)
-def get_openai_text_service() -> OpenAITextService:
-    settings = get_settings()
-    if not settings.openai_api_key:
-        raise RuntimeError("OPENAI_API_KEY is not set.")
-    return OpenAITextService(api_key=settings.openai_api_key)
+def require_openai_text_service(request: Request) -> OpenAITextService:
+    api_key = resolve_openai_api_key(request)
+    if not api_key:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "OpenAI API key is required for this action. "
+                "Provide it in the x-openai-api-key header."
+            ),
+        )
+    return OpenAITextService(api_key=api_key)
 
 
 @router.post("/enhance-prompt", response_model=EnhancePromptResponse)
-def enhance_prompt(payload: EnhancePromptRequest) -> EnhancePromptResponse:
+def enhance_prompt(
+    payload: EnhancePromptRequest,
+    request: Request,
+) -> EnhancePromptResponse:
     try:
-        enhanced_prompt = get_openai_text_service().enhance_prompt(
+        enhanced_prompt = require_openai_text_service(request).enhance_prompt(
             prompt=payload.prompt,
             model=payload.model,
         )
-    except RuntimeError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(exc),
-        ) from exc
     except OpenAITextError as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
@@ -49,17 +50,15 @@ def enhance_prompt(payload: EnhancePromptRequest) -> EnhancePromptResponse:
 
 
 @router.post("/generate-lyrics", response_model=GenerateLyricsResponse)
-def generate_lyrics(payload: GenerateLyricsRequest) -> GenerateLyricsResponse:
+def generate_lyrics(
+    payload: GenerateLyricsRequest,
+    request: Request,
+) -> GenerateLyricsResponse:
     try:
-        lyrics = get_openai_text_service().generate_lyrics(
+        lyrics = require_openai_text_service(request).generate_lyrics(
             prompt=payload.prompt,
             model=payload.model,
         )
-    except RuntimeError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(exc),
-        ) from exc
     except OpenAITextError as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,

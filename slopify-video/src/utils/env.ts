@@ -11,7 +11,7 @@ const optionalUrl = z.preprocess(
 );
 
 const envSchema = z.object({
-  OPENAI_API_KEY: z.string().min(1, "OPENAI_API_KEY is required"),
+  OPENAI_API_KEY: optionalNonEmptyString,
   CHAT_MODEL: z.string().min(1).default("gpt-4.1"),
   VIDEO_MODEL: z.string().min(1).default("sora-2"),
   SUPABASE_URL: optionalUrl,

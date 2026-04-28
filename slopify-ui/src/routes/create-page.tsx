@@ -21,8 +21,14 @@ import {
   type CreateOptions,
 } from "@/lib/create-flow"
 import { API_ENDPOINTS } from "@/lib/constants"
+import {
+  buildGenerationHeaders,
+  getStoredProviderKeys,
+  hasRequiredGenerationKeys,
+} from "@/lib/provider-keys"
 import { generateLyrics, MAX_PROMPT_LENGTH } from "@/lib/song-sessions"
 import { Button } from "@/components/ui/button"
+import { ProviderKeysDialog } from "@/components/provider-keys-dialog"
 import { Slider } from "@/components/ui/slider"
 import { Textarea } from "@/components/ui/textarea"
 
@@ -39,6 +45,11 @@ export function CreatePage() {
   const navigate = useNavigate()
 
   const handleEnhance = async () => {
+    if (!getStoredProviderKeys().openAIApiKey) {
+      setFeedback("Add your OpenAI API key before using AI prompt enhancement.")
+      return
+    }
+
     setIsEnhancing(true)
 
     try {
@@ -87,6 +98,12 @@ export function CreatePage() {
     setFeedback("Writing lyrics from your prompt and options.")
 
     try {
+      if (!hasRequiredGenerationKeys(getStoredProviderKeys())) {
+        throw new Error(
+          "Add both your OpenAI and ElevenLabs API keys before generating songs."
+        )
+      }
+
       const enrichedPrompt = buildMusicPrompt(trimmedPrompt, options)
       const lyrics = await generateLyrics(enrichedPrompt)
       const draftId = createDraftId()
@@ -119,14 +136,17 @@ export function CreatePage() {
   return (
     <section className="relative flex min-h-[calc(100svh-3rem)] items-center justify-center overflow-hidden">
       <div className="absolute top-0 right-0 z-10">
-        <Button
-          type="button"
-          variant="ghost"
-          className="h-10 rounded-[3px] px-5"
-          onClick={() => navigate({ to: "/app" })}
-        >
-          Library
-        </Button>
+        <div className="flex gap-2">
+          <ProviderKeysDialog />
+          <Button
+            type="button"
+            variant="ghost"
+            className="h-10 rounded-[3px] px-5"
+            onClick={() => navigate({ to: "/app" })}
+          >
+            Library
+          </Button>
+        </div>
       </div>
 
       <div className="relative flex w-full max-w-6xl flex-col items-center justify-center px-4 py-12">
@@ -362,9 +382,9 @@ function DurationSlider({
 async function enhancePromptWithBackend(prompt: string) {
   const response = await fetch(ENHANCE_PROMPT_URL, {
     method: "POST",
-    headers: {
+    headers: buildGenerationHeaders({
       "Content-Type": "application/json",
-    },
+    }),
     body: JSON.stringify({
       prompt,
     }),

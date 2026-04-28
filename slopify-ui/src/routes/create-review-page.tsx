@@ -24,6 +24,7 @@ import {
   type SongVariantRecord,
 } from "@/lib/song-sessions"
 import { Button } from "@/components/ui/button"
+import { ProviderKeysDialog } from "@/components/provider-keys-dialog"
 
 export function CreateReviewPage() {
   const { sessionId } = useParams({ from: "/create/$sessionId" })
@@ -99,6 +100,7 @@ export function CreateReviewPage() {
   return (
     <section className="relative min-h-[calc(100svh-3rem)] overflow-hidden py-10">
       <div className="absolute top-0 right-0 z-10 flex gap-2">
+        <ProviderKeysDialog />
         <Button
           type="button"
           variant="ghost"

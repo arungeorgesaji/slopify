@@ -1,5 +1,6 @@
 import { buildApiUrl } from "@/lib/api"
 import { API_ENDPOINTS } from "@/lib/constants"
+import { buildGenerationHeaders } from "@/lib/provider-keys"
 
 export const MAX_PROMPT_LENGTH = 2000
 export const VARIANT_COUNT = 2
@@ -56,10 +57,10 @@ export async function generateSongSession({
 
   const response = await fetch(url, {
     method: "POST",
-    headers: {
+    headers: buildGenerationHeaders({
       "Content-Type": "application/json",
       Accept: "application/json",
-    },
+    }),
     body: JSON.stringify({
       title: deriveTitle(prompt),
       prompt,
@@ -97,10 +98,10 @@ export async function generateLyrics(prompt: string) {
 
   const response = await fetch(url, {
     method: "POST",
-    headers: {
+    headers: buildGenerationHeaders({
       "Content-Type": "application/json",
       Accept: "application/json",
-    },
+    }),
     body: JSON.stringify({
       prompt,
     }),
@@ -142,10 +143,10 @@ export async function generateCoverImage({
 
   const response = await fetch(url, {
     method: "POST",
-    headers: {
+    headers: buildGenerationHeaders({
       "Content-Type": "application/json",
       Accept: "application/json",
-    },
+    }),
     body: JSON.stringify({
       title,
       prompt,
@@ -186,7 +187,9 @@ export async function fetchSongSession(
     throw new Error("Backend URL is missing")
   }
 
-  const response = await fetch(url)
+  const response = await fetch(url, {
+    headers: buildGenerationHeaders(),
+  })
 
   if (!response.ok) {
     throw new Error(await readApiError(response))
@@ -213,9 +216,9 @@ export async function selectSongVariant(
 
   const response = await fetch(url, {
     method: "POST",
-    headers: {
+    headers: buildGenerationHeaders({
       Accept: "application/json",
-    },
+    }),
   })
 
   if (!response.ok) {

@@ -42,6 +42,7 @@ class AlbumVideoService:
         mood: str | None,
         theme: str | None,
         duration_seconds: int,
+        openai_api_key: str | None = None,
         aspect_ratio: str = "1:1",
         resolution: str = "720p",
     ) -> AlbumVideoJobStartResult:
@@ -62,10 +63,15 @@ class AlbumVideoService:
         if theme:
             payload["theme"] = theme
 
+        headers = {}
+        if openai_api_key:
+            headers["x-openai-api-key"] = openai_api_key
+
         try:
             response = httpx.post(
                 f"{self._base_url}/album-video/generate",
                 json=payload,
+                headers=headers,
                 timeout=self._timeout,
             )
             response.raise_for_status()
@@ -79,10 +85,20 @@ class AlbumVideoService:
 
         return AlbumVideoJobStartResult(job_id=job_id.strip())
 
-    def get_status(self, job_id: str) -> AlbumVideoJobStatusResult:
+    def get_status(
+        self,
+        job_id: str,
+        *,
+        openai_api_key: str | None = None,
+    ) -> AlbumVideoJobStatusResult:
+        headers = {}
+        if openai_api_key:
+            headers["x-openai-api-key"] = openai_api_key
+
         try:
             response = httpx.get(
                 f"{self._base_url}/album-video/status/{job_id}",
+                headers=headers,
                 timeout=self._timeout,
             )
             response.raise_for_status()

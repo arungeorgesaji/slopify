@@ -6,7 +6,7 @@ from functools import lru_cache
 from io import BytesIO
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from fastapi.responses import StreamingResponse
 
 from app.config import get_settings
@@ -30,6 +30,10 @@ from app.services.openai_text import (
     OpenAITextService,
     derive_title_from_lyrics,
 )
+from app.services.provider_keys import (
+    resolve_elevenlabs_api_key,
+    resolve_openai_api_key,
+)
 from app.services.supabase_songs import (
     SongNotFoundError,
     SongSessionNotFoundError,
@@ -40,11 +44,19 @@ from app.services.supabase_songs import (
 router = APIRouter(prefix="/songs", tags=["songs"])
 
 
-@lru_cache(maxsize=1)
-def get_music_service() -> ElevenLabsMusicService:
+def get_music_service(request: Request) -> ElevenLabsMusicService:
+    api_key = resolve_elevenlabs_api_key(request)
+    if not api_key:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "ElevenLabs API key is required for music generation. "
+                "Provide it in the x-elevenlabs-api-key header."
+            ),
+        )
     settings = get_settings()
     return ElevenLabsMusicService(
-        api_key=settings.elevenlabs_api_key,
+        api_key=api_key,
         base_url=settings.elevenlabs_base_url,
     )
 
@@ -60,20 +72,18 @@ def get_song_repository() -> SupabaseSongsRepository:
     )
 
 
-@lru_cache(maxsize=1)
-def get_optional_title_service() -> OpenAITextService | None:
-    settings = get_settings()
-    if not settings.openai_api_key:
+def get_optional_title_service(request: Request) -> OpenAITextService | None:
+    api_key = resolve_openai_api_key(request)
+    if not api_key:
         return None
-    return OpenAITextService(api_key=settings.openai_api_key)
+    return OpenAITextService(api_key=api_key)
 
 
-@lru_cache(maxsize=1)
-def get_optional_image_service() -> OpenAIImageService | None:
-    settings = get_settings()
-    if not settings.openai_api_key:
+def get_optional_image_service(request: Request) -> OpenAIImageService | None:
+    api_key = resolve_openai_api_key(request)
+    if not api_key:
         return None
-    return OpenAIImageService(api_key=settings.openai_api_key)
+    return OpenAIImageService(api_key=api_key)
 
 
 @lru_cache(maxsize=1)
@@ -96,11 +106,12 @@ def sanitize_title(title: str | None) -> str | None:
 
 
 def resolve_generated_title(
+    request: Request,
     lyrics: str | None,
     fallback_title: str | None,
 ) -> str | None:
     if lyrics and lyrics.strip():
-        title_service = get_optional_title_service()
+        title_service = get_optional_title_service(request)
         if title_service is not None:
             try:
                 return sanitize_title(
@@ -118,12 +129,13 @@ def resolve_generated_title(
 
 
 def start_cover_generation(
+    request: Request,
     *,
     title: str | None,
     prompt: str | None,
     lyrics: str | None,
 ) -> tuple[ThreadPoolExecutor | None, Future[tuple[bytes, str]] | None]:
-    image_service = get_optional_image_service()
+    image_service = get_optional_image_service(request)
     if image_service is None:
         return None, None
 
@@ -173,12 +185,13 @@ def clamp_video_theme(theme: str | None) -> str | None:
 
 
 def resolve_video_theme(
+    request: Request,
     *,
     title: str | None,
     prompt: str | None,
     lyrics: str | None,
 ) -> str | None:
-    title_service = get_optional_title_service()
+    title_service = get_optional_title_service(request)
     if title_service is not None:
         try:
             theme = title_service.generate_video_theme(
@@ -198,6 +211,7 @@ def resolve_video_theme(
 
 
 def maybe_start_song_video_generation(
+    request: Request,
     *,
     repository: SupabaseSongsRepository,
     song: SongRecord,
@@ -209,6 +223,10 @@ def maybe_start_song_video_generation(
     if video_service is None:
         return song
 
+    openai_api_key = resolve_openai_api_key(request)
+    if not openai_api_key:
+        return song
+
     try:
         started = video_service.start_generation(
             song_id=str(song.id),
@@ -218,11 +236,13 @@ def maybe_start_song_video_generation(
             genre=None,
             mood=None,
             theme=resolve_video_theme(
+                request,
                 title=song.title,
                 prompt=song.prompt,
                 lyrics=song.lyrics,
             ),
             duration_seconds=clamp_video_duration_seconds(song.music_length_ms),
+            openai_api_key=openai_api_key,
         )
         return repository.mark_song_video_job_started(song.id, started.job_id)
     except AlbumVideoError as exc:
@@ -235,6 +255,7 @@ def maybe_start_song_video_generation(
 
 
 def maybe_start_song_variant_video_generation(
+    request: Request,
     *,
     repository: SupabaseSongsRepository,
     session: SongSessionDetail,
@@ -247,6 +268,10 @@ def maybe_start_song_variant_video_generation(
     if video_service is None:
         return variant
 
+    openai_api_key = resolve_openai_api_key(request)
+    if not openai_api_key:
+        return variant
+
     try:
         started = video_service.start_generation(
             song_id=str(variant.id),
@@ -256,6 +281,7 @@ def maybe_start_song_variant_video_generation(
             genre=None,
             mood=None,
             theme=resolve_video_theme(
+                request,
                 title=variant.title or session.title,
                 prompt=variant.prompt or session.prompt,
                 lyrics=variant.lyrics or session.lyrics,
@@ -263,6 +289,7 @@ def maybe_start_song_variant_video_generation(
             duration_seconds=clamp_video_duration_seconds(
                 variant.music_length_ms or session.music_length_ms
             ),
+            openai_api_key=openai_api_key,
         )
         return repository.mark_song_variant_video_job_started(
             variant.id,
@@ -278,6 +305,7 @@ def maybe_start_song_variant_video_generation(
 
 
 def maybe_refresh_song_video_status(
+    request: Request,
     *,
     repository: SupabaseSongsRepository,
     song: SongRecord,
@@ -289,8 +317,15 @@ def maybe_refresh_song_video_status(
     if video_service is None:
         return song
 
+    openai_api_key = resolve_openai_api_key(request)
+    if not openai_api_key:
+        return song
+
     try:
-        status_result = video_service.get_status(song.video_job_id)
+        status_result = video_service.get_status(
+            song.video_job_id,
+            openai_api_key=openai_api_key,
+        )
     except AlbumVideoError:
         return song
 
@@ -303,6 +338,7 @@ def maybe_refresh_song_video_status(
 
 
 def maybe_refresh_song_variant_video_status(
+    request: Request,
     *,
     repository: SupabaseSongsRepository,
     variant: SongVariantRecord,
@@ -317,8 +353,15 @@ def maybe_refresh_song_variant_video_status(
     if video_service is None:
         return variant
 
+    openai_api_key = resolve_openai_api_key(request)
+    if not openai_api_key:
+        return variant
+
     try:
-        status_result = video_service.get_status(variant.video_job_id)
+        status_result = video_service.get_status(
+            variant.video_job_id,
+            openai_api_key=openai_api_key,
+        )
     except AlbumVideoError:
         return variant
 
@@ -328,12 +371,17 @@ def maybe_refresh_song_variant_video_status(
         video_url=status_result.video_url,
         error=status_result.error,
     )
-def require_image_service() -> OpenAIImageService:
-    image_service = get_optional_image_service()
+
+
+def require_image_service(request: Request) -> OpenAIImageService:
+    image_service = get_optional_image_service(request)
     if image_service is None:
         raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Cover image generation is not configured.",
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "OpenAI API key is required for cover image generation. "
+                "Provide it in the x-openai-api-key header."
+            ),
         )
     return image_service
 
@@ -415,8 +463,9 @@ def attach_supplied_song_session_cover(
 )
 def generate_cover_image(
     request: GenerateCoverImageRequest,
+    http_request: Request,
 ) -> GenerateCoverImageResponse:
-    image_service = require_image_service()
+    image_service = require_image_service(http_request)
     try:
         image_bytes, mime_type = image_service.generate_cover_image(
             title=request.title,
@@ -444,12 +493,19 @@ def generate_cover_image(
     status_code=status.HTTP_201_CREATED,
 )
 def generate_song(
+    http_request: Request,
     request: SongGenerateRequest,
     repository: SupabaseSongsRepository = Depends(get_song_repository),
     music_service: ElevenLabsMusicService = Depends(get_music_service),
 ) -> SongRecord:
     request = request.model_copy(
-        update={"title": resolve_generated_title(request.lyrics, request.title)}
+        update={
+            "title": resolve_generated_title(
+                http_request,
+                request.lyrics,
+                request.title,
+            )
+        }
     )
     song = repository.create_song(request)
     supplied_cover = decode_supplied_cover_image(
@@ -460,6 +516,7 @@ def generate_song(
     image_future: Future[tuple[bytes, str]] | None = None
     if supplied_cover is None:
         image_executor, image_future = start_cover_generation(
+            http_request,
             title=request.title,
             prompt=request.prompt,
             lyrics=request.lyrics,
@@ -488,6 +545,7 @@ def generate_song(
             )
         final_song = repository.get_song(completed_song.id)
         return maybe_start_song_video_generation(
+            http_request,
             repository=repository,
             song=final_song,
         )
@@ -516,12 +574,19 @@ def generate_song(
     status_code=status.HTTP_201_CREATED,
 )
 def generate_song_session(
+    http_request: Request,
     request: SongSessionGenerateRequest,
     repository: SupabaseSongsRepository = Depends(get_song_repository),
     music_service: ElevenLabsMusicService = Depends(get_music_service),
 ) -> SongSessionDetail:
     request = request.model_copy(
-        update={"title": resolve_generated_title(request.lyrics, request.title)}
+        update={
+            "title": resolve_generated_title(
+                http_request,
+                request.lyrics,
+                request.title,
+            )
+        }
     )
     session = repository.create_song_session(request)
     supplied_cover = decode_supplied_cover_image(
@@ -532,6 +597,7 @@ def generate_song_session(
     image_future: Future[tuple[bytes, str]] | None = None
     if supplied_cover is None:
         image_executor, image_future = start_cover_generation(
+            http_request,
             title=request.title,
             prompt=request.prompt,
             lyrics=request.lyrics,
@@ -587,13 +653,14 @@ def generate_song_session(
 
 @router.get("", response_model=SongListResponse)
 def list_songs(
+    request: Request,
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     repository: SupabaseSongsRepository = Depends(get_song_repository),
 ) -> SongListResponse:
     items, total = repository.list_songs(limit=limit, offset=offset)
     items = [
-        maybe_refresh_song_video_status(repository=repository, song=item)
+        maybe_refresh_song_video_status(request, repository=repository, song=item)
         for item in items
     ]
     return SongListResponse(items=items, total=total)
@@ -611,6 +678,7 @@ def list_song_sessions(
 
 @router.get("/sessions/{session_id}", response_model=SongSessionDetail)
 def get_song_session(
+    request: Request,
     session_id: UUID,
     repository: SupabaseSongsRepository = Depends(get_song_repository),
 ) -> SongSessionDetail:
@@ -618,6 +686,7 @@ def get_song_session(
         session = repository.get_song_session(session_id)
         refreshed_variants = [
             maybe_refresh_song_variant_video_status(
+                request,
                 repository=repository,
                 variant=variant,
             )
@@ -639,6 +708,7 @@ def get_song_session(
     response_model=SongVariantSelectionResponse,
 )
 def select_song_variant(
+    http_request: Request,
     session_id: UUID,
     variant_id: UUID,
     repository: SupabaseSongsRepository = Depends(get_song_repository),
@@ -658,6 +728,7 @@ def select_song_variant(
             )
         song = repository.select_song_variant(session_id, variant_id)
         maybe_start_song_video_generation(
+            http_request,
             repository=repository,
             song=song,
         )
@@ -677,12 +748,13 @@ def select_song_variant(
 
 @router.get("/{song_id}", response_model=SongRecord)
 def get_song(
+    request: Request,
     song_id: UUID,
     repository: SupabaseSongsRepository = Depends(get_song_repository),
 ) -> SongRecord:
     try:
         song = repository.get_song(song_id)
-        return maybe_refresh_song_video_status(repository=repository, song=song)
+        return maybe_refresh_song_video_status(request, repository=repository, song=song)
     except SongNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

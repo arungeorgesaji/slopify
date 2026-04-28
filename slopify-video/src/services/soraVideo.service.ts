@@ -9,6 +9,7 @@ import type {
 } from "../types/albumVideo.types.js";
 import { env } from "../utils/env.js";
 import { AppError } from "../utils/errors.js";
+import { createOpenAIClient } from "../utils/openaiClient.js";
 import { uploadVideoBytesToStorage } from "./videoStorage.service.js";
 
 type SoraStatus = "queued" | "in_progress" | "completed" | "failed";
@@ -114,35 +115,37 @@ const responseErrorMessage = async (response: Response): Promise<string> => {
 const createSoraVideo = async (
   albumVideoPrompt: string,
   options: VideoGenerationOptions,
-  jobId: string
+  jobId: string,
+  openAIApiKey: string
 ): Promise<SoraVideo> => {
+  const openai = createOpenAIClient(openAIApiKey);
   console.info(`[sora] video request sent for job ${jobId}`);
-  const response = await fetch("https://api.openai.com/v1/videos", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${env.OPENAI_API_KEY}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
+  try {
+    const response = await openai.videos.create({
       model: env.VIDEO_MODEL,
       prompt: `${albumVideoPrompt}\n\nUnique seed: ${jobId}. Silent video only. No audio track. No music. No sound effects. No subtitles. No visible lyrics. No logos.`,
       seconds: secondsForSora(options.durationSeconds),
       size: sizeForSora(options.aspectRatio, options.resolution)
-    })
-  });
+    });
 
-  if (!response.ok) {
-    throw new AppError(await responseErrorMessage(response), 502, "SORA_CREATE_FAILED");
+    console.info(`[sora] video response received for job ${jobId}`);
+    return response as SoraVideo;
+  } catch (error) {
+    throw new AppError(
+      error instanceof Error ? error.message : "Sora request failed",
+      502,
+      "SORA_CREATE_FAILED"
+    );
   }
-
-  console.info(`[sora] video response received for job ${jobId}`);
-  return (await readJson(response)) as SoraVideo;
 };
 
-const retrieveSoraVideo = async (providerJobId: string): Promise<SoraVideo> => {
+const retrieveSoraVideo = async (
+  providerJobId: string,
+  openAIApiKey: string
+): Promise<SoraVideo> => {
   const response = await fetch(`https://api.openai.com/v1/videos/${providerJobId}`, {
     headers: {
-      Authorization: `Bearer ${env.OPENAI_API_KEY}`
+      Authorization: `Bearer ${openAIApiKey}`
     }
   });
 
@@ -153,13 +156,16 @@ const retrieveSoraVideo = async (providerJobId: string): Promise<SoraVideo> => {
   return (await readJson(response)) as SoraVideo;
 };
 
-const downloadSoraVideo = async (providerJobId: string): Promise<{
+const downloadSoraVideo = async (
+  providerJobId: string,
+  openAIApiKey: string
+): Promise<{
   bytes: Uint8Array;
   contentType: string;
 }> => {
   const response = await fetch(`https://api.openai.com/v1/videos/${providerJobId}/content`, {
     headers: {
-      Authorization: `Bearer ${env.OPENAI_API_KEY}`
+      Authorization: `Bearer ${openAIApiKey}`
     }
   });
 
@@ -184,9 +190,10 @@ const failJob = async (jobId: string, error: unknown): Promise<AlbumVideoJob> =>
 
 const completeSoraJob = async (
   job: AlbumVideoJob,
-  providerResponse: SoraVideo
+  providerResponse: SoraVideo,
+  openAIApiKey: string
 ): Promise<AlbumVideoJob> => {
-  const downloaded = await downloadSoraVideo(providerResponse.id);
+  const downloaded = await downloadSoraVideo(providerResponse.id, openAIApiKey);
   silentVideoCache.set(providerResponse.id, {
     bytes: downloaded.bytes,
     contentType: downloaded.contentType
@@ -233,7 +240,8 @@ const completeSoraJob = async (
 
 export const generateVideo = async (
   albumVideoPrompt: string,
-  options: VideoGenerationOptions
+  options: VideoGenerationOptions,
+  openAIApiKey: string
 ): Promise<VideoGenerationResult> => {
   const job = await createQueuedVideoJob({
     songId: options.songId,
@@ -243,7 +251,12 @@ export const generateVideo = async (
 
   try {
     await updateJob(jobId, { status: "processing", error: null });
-    const providerResponse = await createSoraVideo(albumVideoPrompt, options, jobId);
+    const providerResponse = await createSoraVideo(
+      albumVideoPrompt,
+      options,
+      jobId,
+      openAIApiKey
+    );
     const status = toAlbumVideoStatus(providerResponse.status);
 
     const updated = await updateJob(jobId, {
@@ -254,7 +267,7 @@ export const generateVideo = async (
     });
 
     if (status === "completed") {
-      const completed = await completeSoraJob(updated, providerResponse);
+      const completed = await completeSoraJob(updated, providerResponse, openAIApiKey);
       return {
         jobId,
         status: completed.status,
@@ -283,7 +296,8 @@ export const generateVideo = async (
 export const generateVideoForJob = async (
   jobId: string,
   albumVideoPrompt: string,
-  options: VideoGenerationOptions
+  options: VideoGenerationOptions,
+  openAIApiKey: string
 ): Promise<VideoGenerationResult> => {
   try {
     await updateJob(jobId, {
@@ -291,7 +305,12 @@ export const generateVideoForJob = async (
       albumVideoPrompt,
       error: null
     });
-    const providerResponse = await createSoraVideo(albumVideoPrompt, options, jobId);
+    const providerResponse = await createSoraVideo(
+      albumVideoPrompt,
+      options,
+      jobId,
+      openAIApiKey
+    );
     const status = toAlbumVideoStatus(providerResponse.status);
 
     const updated = await updateJob(jobId, {
@@ -302,7 +321,7 @@ export const generateVideoForJob = async (
     });
 
     if (status === "completed") {
-      const completed = await completeSoraJob(updated, providerResponse);
+      const completed = await completeSoraJob(updated, providerResponse, openAIApiKey);
       return {
         jobId,
         status: completed.status,
@@ -328,18 +347,29 @@ export const generateVideoForJob = async (
   }
 };
 
-export const getVideoStatus = async (jobId: string): Promise<AlbumVideoJob> => {
+export const getVideoStatus = async (
+  jobId: string,
+  openAIApiKey: string | null
+): Promise<AlbumVideoJob> => {
   const job = await getJob(jobId);
   if (job.status === "completed" || job.status === "failed" || !job.providerJobId) {
     return job;
   }
 
+  if (!openAIApiKey) {
+    throw new AppError(
+      "OpenAI API key is required to refresh an in-progress video job.",
+      400,
+      "OPENAI_API_KEY_REQUIRED"
+    );
+  }
+
   try {
-    const providerResponse = await retrieveSoraVideo(job.providerJobId);
+    const providerResponse = await retrieveSoraVideo(job.providerJobId, openAIApiKey);
     const status = toAlbumVideoStatus(providerResponse.status);
 
     if (status === "completed") {
-      return completeSoraJob(job, providerResponse);
+      return completeSoraJob(job, providerResponse, openAIApiKey);
     }
 
     if (status === "failed") {
@@ -356,7 +386,10 @@ export const getVideoStatus = async (jobId: string): Promise<AlbumVideoJob> => {
   }
 };
 
-export const downloadVideoContent = async (providerJobId: string): Promise<{
+export const downloadVideoContent = async (
+  providerJobId: string,
+  openAIApiKey: string | null
+): Promise<{
   bytes: Uint8Array;
   contentType: string;
 }> => {
@@ -365,7 +398,15 @@ export const downloadVideoContent = async (providerJobId: string): Promise<{
     return cached;
   }
 
-  const downloaded = await downloadSoraVideo(providerJobId);
+  if (!openAIApiKey) {
+    throw new AppError(
+      "OpenAI API key is required to proxy uncached video content.",
+      400,
+      "OPENAI_API_KEY_REQUIRED"
+    );
+  }
+
+  const downloaded = await downloadSoraVideo(providerJobId, openAIApiKey);
   silentVideoCache.set(providerJobId, downloaded);
   return downloaded;
 };

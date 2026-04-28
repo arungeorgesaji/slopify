@@ -17,7 +17,7 @@ app.use(
   "*",
   cors({
     origin: "*",
-    allowHeaders: ["Content-Type", "Authorization"],
+    allowHeaders: ["Content-Type", "Authorization", "x-openai-api-key"],
     allowMethods: ["GET", "POST", "OPTIONS"],
     maxAge: 86400
   })

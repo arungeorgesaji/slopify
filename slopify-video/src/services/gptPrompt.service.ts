@@ -8,7 +8,7 @@ import type {
 } from "../types/albumVideo.types.js";
 import { env } from "../utils/env.js";
 import { AppError } from "../utils/errors.js";
-import { openai } from "../utils/openaiClient.js";
+import { createOpenAIClient } from "../utils/openaiClient.js";
 
 const SYSTEM_PROMPT = `You are an expert AI music visual director and video prompt engineer.
 
@@ -79,8 +79,10 @@ const parsePromptPayload = (rawContent: string): AlbumVideoPromptPayload => {
 };
 
 export const generateAlbumVideoPrompt = async (
-  input: GenerateAlbumVideoRequest
+  input: GenerateAlbumVideoRequest,
+  openAIApiKey: string
 ): Promise<AlbumVideoPromptPayload> => {
+  const openai = createOpenAIClient(openAIApiKey);
   const generationNonce = `${input.songId}-${Date.now()}-${crypto.randomUUID()}`;
   const userPrompt = [
     "Return valid JSON only.",

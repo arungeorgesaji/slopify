@@ -8,7 +8,8 @@ import {
 import { getJobBySongId } from "../stores/job.store.js";
 
 export const startAlbumVideoGeneration = async (
-  input: GenerateAlbumVideoRequest
+  input: GenerateAlbumVideoRequest,
+  openAIApiKey: string
 ): Promise<AlbumVideoJob> => {
   const existingJob = await getJobBySongId(input.songId);
   if (existingJob && existingJob.status !== "failed") {
@@ -22,7 +23,7 @@ export const startAlbumVideoGeneration = async (
   void (async () => {
     try {
       console.info(`[job] prompt generation started for song ${input.songId}`);
-      const prompt = await generateAlbumVideoPrompt(input);
+      const prompt = await generateAlbumVideoPrompt(input, openAIApiKey);
       console.info(`[job] prompt generated for song ${input.songId}`);
 
       await generateVideoForJob(job.jobId, prompt.albumVideoPrompt, {
@@ -30,7 +31,7 @@ export const startAlbumVideoGeneration = async (
         durationSeconds: input.durationSeconds,
         aspectRatio: input.aspectRatio,
         resolution: input.resolution
-      });
+      }, openAIApiKey);
     } catch (error) {
       console.error(`[job] generation failed for song ${input.songId}`, error);
     }

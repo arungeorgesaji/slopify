@@ -8,7 +8,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     app_name: str = "slopify-music-api"
     api_prefix: str = "/api/v1"
-    elevenlabs_api_key: str = Field(..., alias="ELEVENLABS_API_KEY")
+    elevenlabs_api_key: str | None = Field(default=None, alias="ELEVENLABS_API_KEY")
     elevenlabs_base_url: str = Field(
         default="https://api.elevenlabs.io",
         alias="ELEVENLABS_BASE_URL",

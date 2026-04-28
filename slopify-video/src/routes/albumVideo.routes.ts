@@ -11,6 +11,10 @@ import {
   getVideoStatus
 } from "../services/soraVideo.service.js";
 import { validationErrorResponse } from "../utils/errors.js";
+import {
+  requireOpenAIApiKey,
+  resolveOpenAIApiKey,
+} from "../utils/providerKeys.js";
 
 export const albumVideoRoutes = new Hono();
 
@@ -23,9 +27,10 @@ albumVideoRoutes.post(
   }),
   async (c) => {
     const input = c.req.valid("json");
+    const openAIApiKey = requireOpenAIApiKey(c);
     console.info(`[route] request received for song ${input.songId}`);
 
-    const job = await startAlbumVideoGeneration(input);
+    const job = await startAlbumVideoGeneration(input, openAIApiKey);
 
     return c.json({ success: true, jobId: job.jobId }, 202);
   }
@@ -35,7 +40,8 @@ albumVideoRoutes.get(
   "/video/:providerJobId",
   async (c) => {
     const providerJobId = c.req.param("providerJobId");
-    const video = await downloadVideoContent(providerJobId);
+    const openAIApiKey = resolveOpenAIApiKey(c);
+    const video = await downloadVideoContent(providerJobId, openAIApiKey);
     return new Response(video.bytes.buffer as ArrayBuffer, {
       headers: {
         "Content-Type": video.contentType,
@@ -54,7 +60,8 @@ albumVideoRoutes.get(
   }),
   async (c) => {
     const { jobId } = c.req.valid("param");
-    const job = await getVideoStatus(jobId);
+    const openAIApiKey = resolveOpenAIApiKey(c);
+    const job = await getVideoStatus(jobId, openAIApiKey);
 
     return c.json({
       jobId: job.jobId,

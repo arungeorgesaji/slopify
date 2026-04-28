@@ -15,7 +15,9 @@ import {
   generateSongSession,
 } from "@/lib/song-sessions"
 import { Button } from "@/components/ui/button"
+import { ProviderKeysDialog } from "@/components/provider-keys-dialog"
 import { Textarea } from "@/components/ui/textarea"
+import { getStoredProviderKeys, hasRequiredGenerationKeys } from "@/lib/provider-keys"
 
 const MAX_LYRICS_LENGTH = 10000
 
@@ -36,7 +38,12 @@ export function LyricsReviewPage() {
       : ""
 
   useEffect(() => {
-    if (!draft || draft.coverImageBase64 || isRefreshingCover) {
+    if (
+      !draft ||
+      draft.coverImageBase64 ||
+      isRefreshingCover ||
+      !getStoredProviderKeys().openAIApiKey
+    ) {
       return
     }
 
@@ -66,6 +73,10 @@ export function LyricsReviewPage() {
     setFeedback("Retrying lyrics with the same prompt and options.")
 
     try {
+      if (!getStoredProviderKeys().openAIApiKey) {
+        throw new Error("Add your OpenAI API key before generating lyrics.")
+      }
+
       const nextLyrics = await generateLyrics(draft.enrichedPrompt)
       const nextDraft = { ...draft, lyrics: nextLyrics }
 
@@ -86,6 +97,11 @@ export function LyricsReviewPage() {
   const handleRefreshCover = async () => {
     if (!draft) {
       setFeedback("Draft was not found. Go back and create lyrics again.")
+      return
+    }
+
+    if (!getStoredProviderKeys().openAIApiKey) {
+      setFeedback("Add your OpenAI API key before generating cover art.")
       return
     }
 
@@ -123,6 +139,12 @@ export function LyricsReviewPage() {
     setFeedback("Generating two music variations from approved lyrics.")
 
     try {
+      if (!hasRequiredGenerationKeys(getStoredProviderKeys())) {
+        throw new Error(
+          "Add both your OpenAI and ElevenLabs API keys before generating songs."
+        )
+      }
+
       const enrichedPrompt = buildMusicPrompt(draft.prompt, draft.options)
       const session = await generateSongSession({
         prompt: enrichedPrompt,
@@ -156,6 +178,7 @@ export function LyricsReviewPage() {
   return (
     <section className="relative flex min-h-[calc(100svh-3rem)] items-center justify-center overflow-hidden py-10">
       <div className="absolute top-0 right-0 z-10 flex gap-2">
+        <ProviderKeysDialog />
         <Button
           type="button"
           variant="ghost"

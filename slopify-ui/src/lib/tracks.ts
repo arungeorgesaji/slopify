@@ -1,5 +1,6 @@
 import { buildApiUrl } from "@/lib/api"
 import { API_ENDPOINTS } from "@/lib/constants"
+import { buildGenerationHeaders } from "@/lib/provider-keys"
 
 export type Track = {
   id: string
@@ -56,7 +57,9 @@ async function fetchSongTracks(): Promise<Track[]> {
     return []
   }
 
-  const response = await fetch(`${SONGS_URL}?limit=${TRACK_PAGE_SIZE}&offset=0`)
+  const response = await fetch(`${SONGS_URL}?limit=${TRACK_PAGE_SIZE}&offset=0`, {
+    headers: buildGenerationHeaders(),
+  })
 
   if (!response.ok) {
     throw new Error("Failed to fetch songs")
@@ -77,7 +80,9 @@ async function fetchSongTrack(songId: string): Promise<Track | null> {
     throw new Error("Backend URL is missing")
   }
 
-  const response = await fetch(url)
+  const response = await fetch(url, {
+    headers: buildGenerationHeaders(),
+  })
 
   if (!response.ok) {
     throw new Error("Failed to fetch song")
@@ -98,7 +103,10 @@ async function fetchSelectedSessionTracks(): Promise<Track[]> {
   }
 
   const response = await fetch(
-    `${SONG_SESSIONS_URL}?limit=${TRACK_PAGE_SIZE}&offset=0`
+    `${SONG_SESSIONS_URL}?limit=${TRACK_PAGE_SIZE}&offset=0`,
+    {
+      headers: buildGenerationHeaders(),
+    }
   )
 
   if (!response.ok) {
@@ -134,7 +142,9 @@ async function fetchSongSessionDetail(sessionId: string) {
     throw new Error("Backend URL is missing")
   }
 
-  const response = await fetch(url)
+  const response = await fetch(url, {
+    headers: buildGenerationHeaders(),
+  })
 
   if (!response.ok) {
     throw new Error("Failed to fetch song session detail")
@@ -157,7 +167,10 @@ async function fetchSelectedSessionTrackByVariantId(
   }
 
   const response = await fetch(
-    `${SONG_SESSIONS_URL}?limit=${TRACK_PAGE_SIZE}&offset=0`
+    `${SONG_SESSIONS_URL}?limit=${TRACK_PAGE_SIZE}&offset=0`,
+    {
+      headers: buildGenerationHeaders(),
+    }
   )
 
   if (!response.ok) {
