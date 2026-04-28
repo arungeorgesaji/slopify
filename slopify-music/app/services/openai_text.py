@@ -59,6 +59,17 @@ Rules:
 - Keep the output at 120 characters or fewer.
 """.strip()
 
+IMAGE_BRIEF_SUMMARIZER_INSTRUCTIONS = """
+You compress album-cover request text for downstream image generation.
+
+Rules:
+- Return only the rewritten brief text.
+- Preserve the core subject, mood, style, and imagery.
+- Prefer vivid noun phrases and short clauses over full sentences when possible.
+- Do not add quotation marks, markdown, labels, or explanations.
+- Keep the output at 200 characters or fewer.
+""".strip()
+
 
 class OpenAITextError(Exception):
     """Raised when OpenAI text generation fails."""
@@ -104,6 +115,13 @@ class OpenAITextService:
                 prompt=prompt,
                 lyrics=lyrics,
             ),
+            model=model,
+        )
+
+    def summarize_image_brief(self, prompt: str, model: str) -> str:
+        return self._generate_text(
+            instructions=IMAGE_BRIEF_SUMMARIZER_INSTRUCTIONS,
+            prompt=self._build_image_brief_input(prompt),
             model=model,
         )
 
@@ -161,6 +179,15 @@ class OpenAITextService:
             parts.append(f"Lyrics:\n{lyrics.strip()}")
 
         return "\n\n".join(parts)
+
+    @staticmethod
+    def _build_image_brief_input(prompt: str) -> str:
+        cleaned_prompt = prompt.strip()
+        return (
+            "Compress the following album-cover brief for image generation while "
+            "preserving the main subject, mood, and visual cues.\n\n"
+            f"Brief:\n{cleaned_prompt}"
+        )
 
 
 def derive_title_from_lyrics(lyrics: str) -> str:

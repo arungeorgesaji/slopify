@@ -145,6 +145,7 @@ def start_cover_generation(
         title=title,
         prompt=prompt,
         lyrics=lyrics,
+        text_service=get_optional_title_service(request),
     )
     return executor, future
 
@@ -471,6 +472,7 @@ def generate_cover_image(
             title=request.title,
             prompt=request.prompt,
             lyrics=request.lyrics,
+            text_service=get_optional_title_service(http_request),
         )
     except OpenAIImageError as exc:
         raise HTTPException(
