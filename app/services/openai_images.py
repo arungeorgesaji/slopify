@@ -4,6 +4,8 @@ import base64
 
 import httpx
 
+from app.services.openai_text import OpenAITextError, OpenAITextService
+
 
 IMAGE_MODEL = "dall-e-3"
 IMAGE_SIZE = "1024x1024"
@@ -11,6 +13,8 @@ IMAGE_QUALITY = "standard"
 IMAGE_STYLE = "vivid"
 IMAGE_RESPONSE_FORMAT = "b64_json"
 IMAGE_MIME_TYPE = "image/png"
+IMAGE_BRIEF_MAX_LENGTH = 200
+IMAGE_BRIEF_SUMMARY_MODEL = "gpt-5.4-mini"
 
 COVER_ART_INSTRUCTIONS = """
 Create a square album cover for a generated song.
@@ -40,12 +44,16 @@ class OpenAIImageService:
         title: str | None,
         prompt: str | None,
         lyrics: str | None,
+        text_service: OpenAITextService | None = None,
     ) -> tuple[bytes, str]:
         payload = {
             "model": IMAGE_MODEL,
             "prompt": self._build_cover_prompt(
                 title=title,
-                prompt=prompt,
+                prompt=self._normalize_prompt(
+                    prompt,
+                    text_service=text_service,
+                ),
                 lyrics=lyrics,
             ),
             "size": IMAGE_SIZE,
@@ -107,3 +115,30 @@ class OpenAIImageService:
             "emotionally specific, suitable for a music library thumbnail."
         )
         return "\n\n".join(sections)
+
+    def _normalize_prompt(
+        self,
+        prompt: str | None,
+        *,
+        text_service: OpenAITextService | None,
+    ) -> str | None:
+        if not prompt or not prompt.strip():
+            return None
+
+        normalized = " ".join(prompt.split()).strip()
+        if len(normalized) <= IMAGE_BRIEF_MAX_LENGTH:
+            return normalized
+
+        if text_service is not None:
+            try:
+                summarized = text_service.summarize_image_brief(
+                    normalized,
+                    model=IMAGE_BRIEF_SUMMARY_MODEL,
+                )
+                summarized = " ".join(summarized.split()).strip()
+                if summarized:
+                    return summarized[:IMAGE_BRIEF_MAX_LENGTH]
+            except OpenAITextError:
+                pass
+
+        return normalized[:IMAGE_BRIEF_MAX_LENGTH]

@@ -145,6 +145,48 @@ class SupabaseSongsRepository:
         )
         return SongRecord.model_validate(result.data[0])
 
+    def mark_song_video_job_started(
+        self,
+        song_id: UUID,
+        job_id: str,
+    ) -> SongRecord:
+        result = (
+            self._client.table("songs")
+            .update(
+                {
+                    "video_job_id": job_id,
+                    "video_status": "queued",
+                    "video_url": None,
+                    "video_error": None,
+                }
+            )
+            .eq("id", str(song_id))
+            .execute()
+        )
+        return SongRecord.model_validate(result.data[0])
+
+    def update_song_video_status(
+        self,
+        song_id: UUID,
+        *,
+        status: str,
+        video_url: str | None,
+        error: str | None,
+    ) -> SongRecord:
+        result = (
+            self._client.table("songs")
+            .update(
+                {
+                    "video_status": status,
+                    "video_url": video_url,
+                    "video_error": error[:2000] if error else None,
+                }
+            )
+            .eq("id", str(song_id))
+            .execute()
+        )
+        return SongRecord.model_validate(result.data[0])
+
     def attach_song_cover(
         self,
         song_id: UUID,
@@ -184,6 +226,52 @@ class SupabaseSongsRepository:
                 {
                     "status": "failed",
                     "error_message": error_message[:2000],
+                }
+            )
+            .eq("id", str(variant_id))
+            .execute()
+        )
+        if not result.data:
+            raise SongVariantNotFoundError(str(variant_id))
+        return SongVariantRecord.model_validate(result.data[0])
+
+    def mark_song_variant_video_job_started(
+        self,
+        variant_id: UUID,
+        job_id: str,
+    ) -> SongVariantRecord:
+        result = (
+            self._client.table("song_variants")
+            .update(
+                {
+                    "video_job_id": job_id,
+                    "video_status": "queued",
+                    "video_url": None,
+                    "video_error": None,
+                }
+            )
+            .eq("id", str(variant_id))
+            .execute()
+        )
+        if not result.data:
+            raise SongVariantNotFoundError(str(variant_id))
+        return SongVariantRecord.model_validate(result.data[0])
+
+    def update_song_variant_video_status(
+        self,
+        variant_id: UUID,
+        *,
+        status: str,
+        video_url: str | None,
+        error: str | None,
+    ) -> SongVariantRecord:
+        result = (
+            self._client.table("song_variants")
+            .update(
+                {
+                    "video_status": status,
+                    "video_url": video_url,
+                    "video_error": error[:2000] if error else None,
                 }
             )
             .eq("id", str(variant_id))
@@ -352,15 +440,43 @@ class SupabaseSongsRepository:
         self,
         session_id: UUID,
         variant_id: UUID,
-    ) -> SongSessionRecord:
+    ) -> SongRecord:
         variant = self.get_song_variant(variant_id)
         if variant.session_id != session_id:
             raise SongVariantNotFoundError(str(variant_id))
+
+        session = self.get_song_session(session_id)
+        song = self.create_song(
+            SongGenerateRequest(
+                title=variant.title or session.title,
+                prompt=variant.prompt or session.prompt,
+                lyrics=variant.lyrics or session.lyrics,
+                composition_plan=variant.composition_plan or session.composition_plan,
+                music_length_ms=variant.music_length_ms or session.music_length_ms,
+                model_id=variant.model_id or session.model_id,
+                force_instrumental=variant.force_instrumental,
+                respect_sections_durations=variant.respect_sections_durations,
+                user_id=session.user_id,
+            )
+        )
+
+        audio_bytes = self.download_audio(variant.storage_path)
+        song = self.mark_song_completed(song.id, audio_bytes, variant.mime_type)
+
+        if session.image_storage_path and session.image_mime_type:
+            image_bytes = self.download_image(session.image_storage_path)
+            song = self.attach_song_cover(
+                song.id,
+                image_bytes,
+                session.image_mime_type,
+            )
+
         result = (
             self._client.table("song_sessions")
             .update(
                 {
                     "selected_variant_id": str(variant_id),
+                    "selected_song_id": str(song.id),
                     "status": "completed",
                 }
             )
@@ -369,7 +485,7 @@ class SupabaseSongsRepository:
         )
         if not result.data:
             raise SongSessionNotFoundError(str(session_id))
-        return SongSessionRecord.model_validate(result.data[0])
+        return song
 
     def list_songs(self, limit: int, offset: int) -> tuple[list[SongRecord], int]:
         result = (

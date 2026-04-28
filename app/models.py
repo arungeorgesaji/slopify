@@ -16,6 +16,8 @@ class SongGenerationRequest(BaseModel):
     model_id: str = Field(default="music_v1", max_length=100)
     force_instrumental: bool = False
     respect_sections_durations: bool = False
+    cover_image_base64: str | None = None
+    cover_image_mime_type: str | None = None
     user_id: UUID | None = None
 
     @model_validator(mode="after")
@@ -29,6 +31,10 @@ class SongGenerationRequest(BaseModel):
         if self.force_instrumental and self.composition_plan is not None:
             raise ValueError(
                 "`force_instrumental` is only supported when generating from `prompt`."
+            )
+        if bool(self.cover_image_base64) != bool(self.cover_image_mime_type):
+            raise ValueError(
+                "Provide both `cover_image_base64` and `cover_image_mime_type` together."
             )
         return self
 
@@ -103,6 +109,10 @@ class SongRecord(BaseModel):
     image_storage_bucket: str
     image_storage_path: str | None = None
     image_mime_type: str | None = None
+    video_job_id: str | None = None
+    video_status: str | None = None
+    video_url: str | None = None
+    video_error: str | None = None
     mime_type: str | None = None
     size_bytes: int | None = None
     error_message: str | None = None
@@ -131,6 +141,10 @@ class SongVariantRecord(BaseModel):
     storage_bucket: str
     storage_path: str | None = None
     mime_type: str | None = None
+    video_job_id: str | None = None
+    video_status: str | None = None
+    video_url: str | None = None
+    video_error: str | None = None
     size_bytes: int | None = None
     error_message: str | None = None
     created_at: datetime
@@ -151,6 +165,7 @@ class SongSessionRecord(BaseModel):
     candidate_count: int
     status: str
     selected_variant_id: UUID | None = None
+    selected_song_id: UUID | None = None
     image_storage_bucket: str | None = None
     image_storage_path: str | None = None
     image_mime_type: str | None = None

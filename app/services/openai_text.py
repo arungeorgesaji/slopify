@@ -48,6 +48,28 @@ Rules:
 - Do not output more than 80 characters.
 """.strip()
 
+VIDEO_THEME_INSTRUCTIONS = """
+You compress song context into a short theme string for downstream video generation.
+
+Rules:
+- Return only the theme text.
+- Preserve the song's core idea, mood, and imagery.
+- Prefer a compact phrase rather than a sentence when possible.
+- Do not add quotation marks, markdown, labels, or explanations.
+- Keep the output at 120 characters or fewer.
+""".strip()
+
+IMAGE_BRIEF_SUMMARIZER_INSTRUCTIONS = """
+You compress album-cover request text for downstream image generation.
+
+Rules:
+- Return only the rewritten brief text.
+- Preserve the core subject, mood, style, and imagery.
+- Prefer vivid noun phrases and short clauses over full sentences when possible.
+- Do not add quotation marks, markdown, labels, or explanations.
+- Keep the output at 200 characters or fewer.
+""".strip()
+
 
 class OpenAITextError(Exception):
     """Raised when OpenAI text generation fails."""
@@ -75,6 +97,31 @@ class OpenAITextService:
         return self._generate_text(
             instructions=TITLE_INSTRUCTIONS,
             prompt=self._build_title_input(lyrics),
+            model=model,
+        )
+
+    def generate_video_theme(
+        self,
+        *,
+        title: str | None,
+        prompt: str | None,
+        lyrics: str | None,
+        model: str,
+    ) -> str:
+        return self._generate_text(
+            instructions=VIDEO_THEME_INSTRUCTIONS,
+            prompt=self._build_video_theme_input(
+                title=title,
+                prompt=prompt,
+                lyrics=lyrics,
+            ),
+            model=model,
+        )
+
+    def summarize_image_brief(self, prompt: str, model: str) -> str:
+        return self._generate_text(
+            instructions=IMAGE_BRIEF_SUMMARIZER_INSTRUCTIONS,
+            prompt=self._build_image_brief_input(prompt),
             model=model,
         )
 
@@ -111,6 +158,35 @@ class OpenAITextService:
             "Write a strong song title for the following lyrics. Prefer the main hook "
             "or most emotionally central phrase.\n\n"
             f"Lyrics:\n{cleaned_lyrics}"
+        )
+
+    @staticmethod
+    def _build_video_theme_input(
+        *,
+        title: str | None,
+        prompt: str | None,
+        lyrics: str | None,
+    ) -> str:
+        parts: list[str] = [
+            "Compress the following song context into a short theme for album video generation."
+        ]
+
+        if title and title.strip():
+            parts.append(f"Title:\n{title.strip()}")
+        if prompt and prompt.strip():
+            parts.append(f"Prompt:\n{prompt.strip()}")
+        if lyrics and lyrics.strip():
+            parts.append(f"Lyrics:\n{lyrics.strip()}")
+
+        return "\n\n".join(parts)
+
+    @staticmethod
+    def _build_image_brief_input(prompt: str) -> str:
+        cleaned_prompt = prompt.strip()
+        return (
+            "Compress the following album-cover brief for image generation while "
+            "preserving the main subject, mood, and visual cues.\n\n"
+            f"Brief:\n{cleaned_prompt}"
         )
 
 
