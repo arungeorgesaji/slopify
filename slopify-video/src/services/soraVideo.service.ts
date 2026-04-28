@@ -9,7 +9,6 @@ import type {
 } from "../types/albumVideo.types.js";
 import { env } from "../utils/env.js";
 import { AppError } from "../utils/errors.js";
-import { createOpenAIClient } from "../utils/openaiClient.js";
 import { uploadVideoBytesToStorage } from "./videoStorage.service.js";
 
 type SoraStatus = "queued" | "in_progress" | "completed" | "failed";
@@ -118,19 +117,33 @@ const createSoraVideo = async (
   jobId: string,
   openAIApiKey: string
 ): Promise<SoraVideo> => {
-  const openai = createOpenAIClient(openAIApiKey);
   console.info(`[sora] video request sent for job ${jobId}`);
   try {
-    const response = await openai.videos.create({
-      model: env.VIDEO_MODEL,
-      prompt: `${albumVideoPrompt}\n\nUnique seed: ${jobId}. Silent video only. No audio track. No music. No sound effects. No subtitles. No visible lyrics. No logos.`,
-      seconds: secondsForSora(options.durationSeconds),
-      size: sizeForSora(options.aspectRatio, options.resolution)
+    const response = await fetch("https://api.openai.com/v1/videos", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${openAIApiKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: env.VIDEO_MODEL,
+        prompt: `${albumVideoPrompt}\n\nUnique seed: ${jobId}. Silent video only. No audio track. No music. No sound effects. No subtitles. No visible lyrics. No logos.`,
+        seconds: secondsForSora(options.durationSeconds),
+        size: sizeForSora(options.aspectRatio, options.resolution)
+      })
     });
 
+    if (!response.ok) {
+      throw new AppError(await responseErrorMessage(response), 502, "SORA_CREATE_FAILED");
+    }
+
     console.info(`[sora] video response received for job ${jobId}`);
-    return response as SoraVideo;
+    return (await readJson(response)) as SoraVideo;
   } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
+
     throw new AppError(
       error instanceof Error ? error.message : "Sora request failed",
       502,
