@@ -6,12 +6,18 @@ import { useSlopifyPlayback } from "@/components/slopify-app-context"
 import { refreshTrack } from "@/lib/tracks"
 
 export const MusicPlayer = memo(function MusicPlayer() {
-  const { currentTrack, queue, setCurrentTrack, setQueue } =
-    useSlopifyPlayback()
+  const {
+    currentTrack,
+    queue,
+    setCurrentTime: setSharedCurrentTime,
+    setCurrentTrack,
+    setIsPlaying: setSharedIsPlaying,
+    setQueue,
+  } = useSlopifyPlayback()
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [progress, setProgress] = useState([0])
-  const [currentTime, setCurrentTime] = useState(0)
+  const [currentTime, setLocalCurrentTime] = useState(0)
   const [volume, setVolume] = useState([72])
   const [audioError, setAudioError] = useState<string | null>(null)
   const currentAudioUrl = currentTrack?.audioUrl ?? null
@@ -23,12 +29,14 @@ export const MusicPlayer = memo(function MusicPlayer() {
     const resetTimer = window.setTimeout(() => {
       setIsPlaying(false)
       setProgress([0])
-      setCurrentTime(0)
+      setLocalCurrentTime(0)
+      setSharedCurrentTime(0)
+      setSharedIsPlaying(false)
       setAudioError(null)
     }, 0)
 
     return () => window.clearTimeout(resetTimer)
-  }, [currentAudioUrl])
+  }, [currentAudioUrl, setSharedCurrentTime, setSharedIsPlaying])
 
   useEffect(() => {
     if (!audioRef.current) {
@@ -91,7 +99,8 @@ export const MusicPlayer = memo(function MusicPlayer() {
       const nextCurrentTime = audioRef.current.duration * (nextProgress / 100)
 
       audioRef.current.currentTime = nextCurrentTime
-      setCurrentTime(nextCurrentTime)
+      setLocalCurrentTime(nextCurrentTime)
+      setSharedCurrentTime(nextCurrentTime)
     }
   }
 
@@ -107,6 +116,7 @@ export const MusicPlayer = memo(function MusicPlayer() {
     if (isPlaying) {
       audioRef.current.pause()
       setIsPlaying(false)
+      setSharedIsPlaying(false)
       return
     }
 
@@ -115,9 +125,11 @@ export const MusicPlayer = memo(function MusicPlayer() {
       .then(() => {
         setAudioError(null)
         setIsPlaying(true)
+        setSharedIsPlaying(true)
       })
       .catch(() => {
         setIsPlaying(false)
+        setSharedIsPlaying(false)
         setAudioError("Audio failed")
       })
   }
@@ -129,7 +141,8 @@ export const MusicPlayer = memo(function MusicPlayer() {
 
     const nextCurrentTime = audioRef.current.currentTime
 
-    setCurrentTime(nextCurrentTime)
+    setLocalCurrentTime(nextCurrentTime)
+    setSharedCurrentTime(nextCurrentTime)
     setProgress([(nextCurrentTime / audioRef.current.duration) * 100])
   }
 
@@ -157,7 +170,12 @@ export const MusicPlayer = memo(function MusicPlayer() {
         <audio
           ref={audioRef}
           src={currentTrack.audioUrl}
-          onEnded={() => setIsPlaying(false)}
+          onEnded={() => {
+            setIsPlaying(false)
+            setSharedIsPlaying(false)
+            setLocalCurrentTime(0)
+            setSharedCurrentTime(0)
+          }}
           onTimeUpdate={handleTimeUpdate}
         />
       ) : null}

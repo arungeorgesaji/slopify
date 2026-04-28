@@ -1,4 +1,4 @@
-import { useDeferredValue, useEffect, useMemo, useState } from "react"
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { ArrowLeft, Play } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
@@ -24,11 +24,14 @@ const EMPTY_EQUALIZER_BARS = Array.from({ length: 16 }, (_, index) => ({
 const SKELETON_ROWS = Array.from({ length: 6 }, (_, index) => index)
 
 export function HomePage() {
-  const { currentTrack, setCurrentTrack, setQueue } = useSlopifyPlayback()
+  const { currentTime, currentTrack, isPlaying, setCurrentTrack, setQueue } =
+    useSlopifyPlayback()
   const { search } = useSlopifySearch()
   const deferredSearch = useDeferredValue(search)
   const [activeFilter, setActiveFilter] = useState<string | null>(null)
   const [selectedTrackId, setSelectedTrackId] = useState<string | null>(null)
+  const previousCurrentTrackIdRef = useRef<string | null>(null)
+  const videoRef = useRef<HTMLVideoElement | null>(null)
 
   const { data: tracks = [], isLoading } = useQuery({
     queryKey: ["tracks"],
@@ -51,6 +54,21 @@ export function HomePage() {
     setQueue(tracks)
   }, [setQueue, tracks])
 
+  useEffect(() => {
+    const previousCurrentTrackId = previousCurrentTrackIdRef.current
+
+    if (
+      selectedTrackId &&
+      currentTrack &&
+      selectedTrackId === previousCurrentTrackId &&
+      currentTrack.id !== previousCurrentTrackId
+    ) {
+      setSelectedTrackId(currentTrack.id)
+    }
+
+    previousCurrentTrackIdRef.current = currentTrack?.id ?? null
+  }, [currentTrack, selectedTrackId])
+
   const selectedTrack = useMemo(() => {
     if (!selectedTrackId) {
       return null
@@ -62,6 +80,36 @@ export function HomePage() {
 
     return tracks.find((track) => track.id === selectedTrackId) ?? null
   }, [currentTrack, selectedTrackId, tracks])
+
+  const shouldShowSelectedTrackVideo = Boolean(
+    selectedTrack &&
+      currentTrack?.id === selectedTrack.id &&
+      isPlaying &&
+      selectedTrack.videoStatus === "completed" &&
+      selectedTrack.videoUrl
+  )
+
+  useEffect(() => {
+    const video = videoRef.current
+
+    if (!video) {
+      return
+    }
+
+    if (!shouldShowSelectedTrackVideo) {
+      video.pause()
+      video.currentTime = 0
+      return
+    }
+
+    if (Math.abs(video.currentTime - currentTime) > 0.35) {
+      video.currentTime = currentTime
+    }
+
+    void video.play().catch(() => {
+      return
+    })
+  }, [currentTime, shouldShowSelectedTrackVideo])
 
   const visibleTracks = useMemo(() => {
     const normalizedSearch = deferredSearch.trim().toLowerCase()
@@ -147,16 +195,14 @@ export function HomePage() {
                 <div className="relative flex flex-1 items-center justify-center overflow-hidden">
                   <div className="absolute inset-5 rounded-[4px] border border-acid/18 bg-[radial-gradient(circle_at_center,_rgba(183,243,91,0.12),_transparent_42%)] shadow-[inset_0_0_68px_rgba(183,243,91,0.08)]" />
                   <div className="absolute inset-x-8 top-1/2 h-px bg-gradient-to-r from-transparent via-cyan/50 to-transparent" />
-                  {selectedTrack.videoStatus === "completed" &&
-                  selectedTrack.videoUrl ? (
+                  {shouldShowSelectedTrackVideo ? (
                     <div className="relative aspect-square w-full max-w-[320px] overflow-hidden rounded-[6px] border border-border bg-muted/30 shadow-[0_24px_80px_rgba(0,0,0,0.45),0_0_36px_rgba(183,243,91,0.14)]">
                       <video
+                        ref={videoRef}
                         src={selectedTrack.videoUrl}
                         poster={selectedTrack.coverUrl || undefined}
                         className="size-full object-cover"
-                        autoPlay
                         muted
-                        loop
                         playsInline
                       />
                       <div className="pointer-events-none absolute inset-x-5 bottom-5 flex h-24 items-end justify-center gap-1.5">

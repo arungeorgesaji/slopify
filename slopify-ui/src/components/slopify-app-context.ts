@@ -3,9 +3,13 @@ import type { Dispatch, SetStateAction } from "react"
 import type { Track } from "@/lib/tracks"
 
 type SlopifyPlaybackContextValue = {
+  currentTime: number
   currentTrack: Track | null
+  isPlaying: boolean
   queue: Track[]
+  setCurrentTime: Dispatch<SetStateAction<number>>
   setCurrentTrack: Dispatch<SetStateAction<Track | null>>
+  setIsPlaying: Dispatch<SetStateAction<boolean>>
   setQueue: Dispatch<SetStateAction<Track[]>>
 }
 

@@ -12,6 +12,8 @@ import type { Track } from "@/lib/tracks"
 export function SlopifyShell() {
   const [search, setSearch] = useState("")
   const [currentTrack, setCurrentTrack] = useState<Track | null>(null)
+  const [currentTime, setCurrentTime] = useState(0)
+  const [isPlaying, setIsPlaying] = useState(false)
   const [queue, setQueue] = useState<Track[]>([])
   const desktopSearchRef = useRef<HTMLInputElement | null>(null)
   const mobileSearchRef = useRef<HTMLInputElement | null>(null)
@@ -22,8 +24,17 @@ export function SlopifyShell() {
   const isIntroPage = pathname === "/"
   const isCreatePage = pathname.startsWith("/create")
   const playbackValue = useMemo(
-    () => ({ currentTrack, queue, setCurrentTrack, setQueue }),
-    [currentTrack, queue]
+    () => ({
+      currentTime,
+      currentTrack,
+      isPlaying,
+      queue,
+      setCurrentTime,
+      setCurrentTrack,
+      setIsPlaying,
+      setQueue,
+    }),
+    [currentTime, currentTrack, isPlaying, queue]
   )
   const searchValue = useMemo(() => ({ search, setSearch }), [search])
 
