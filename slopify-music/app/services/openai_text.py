@@ -70,6 +70,17 @@ Rules:
 - Keep the output at 200 characters or fewer.
 """.strip()
 
+LYRICS_IMAGE_CUE_INSTRUCTIONS = """
+You compress song lyrics into short visual cues for album-cover generation.
+
+Rules:
+- Return only the rewritten cue text.
+- Preserve the core imagery, mood, setting, and emotional tone.
+- Focus on visual nouns, atmosphere, color, lighting, and symbolic objects.
+- Avoid plot summary, commentary, markdown, labels, and quotation marks.
+- Keep the output at 200 characters or fewer.
+""".strip()
+
 
 class OpenAITextError(Exception):
     """Raised when OpenAI text generation fails."""
@@ -122,6 +133,13 @@ class OpenAITextService:
         return self._generate_text(
             instructions=IMAGE_BRIEF_SUMMARIZER_INSTRUCTIONS,
             prompt=self._build_image_brief_input(prompt),
+            model=model,
+        )
+
+    def summarize_lyrics_for_image(self, lyrics: str, model: str) -> str:
+        return self._generate_text(
+            instructions=LYRICS_IMAGE_CUE_INSTRUCTIONS,
+            prompt=self._build_lyrics_image_input(lyrics),
             model=model,
         )
 
@@ -187,6 +205,15 @@ class OpenAITextService:
             "Compress the following album-cover brief for image generation while "
             "preserving the main subject, mood, and visual cues.\n\n"
             f"Brief:\n{cleaned_prompt}"
+        )
+
+    @staticmethod
+    def _build_lyrics_image_input(lyrics: str) -> str:
+        cleaned_lyrics = lyrics.strip()
+        return (
+            "Compress the following lyrics into short visual cues for album-cover "
+            "generation while preserving the main imagery and emotional tone.\n\n"
+            f"Lyrics:\n{cleaned_lyrics}"
         )
 
 
