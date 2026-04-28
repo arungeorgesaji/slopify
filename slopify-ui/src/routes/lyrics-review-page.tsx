@@ -382,7 +382,6 @@ async function refreshCoverImage(
 
   try {
     const cover = await generateCoverImage({
-      title: draft.prompt,
       prompt: draft.enrichedPrompt,
       lyrics: lyrics.trim() || draft.lyrics,
     })

@@ -127,11 +127,9 @@ export async function generateLyrics(prompt: string) {
 }
 
 export async function generateCoverImage({
-  title,
   prompt,
   lyrics,
 }: {
-  title?: string
   prompt?: string
   lyrics?: string
 }): Promise<GeneratedCoverImage> {
@@ -148,7 +146,6 @@ export async function generateCoverImage({
       Accept: "application/json",
     }),
     body: JSON.stringify({
-      title,
       prompt,
       lyrics,
     }),
