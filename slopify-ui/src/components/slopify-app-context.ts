@@ -6,11 +6,17 @@ type SlopifyPlaybackContextValue = {
   currentTime: number
   currentTrack: Track | null
   isPlaying: boolean
+  pauseRequestId: number
+  playRequestId: number
   queue: Track[]
+  requestPausePlayback: () => void
+  requestPlayTrack: (track: Track) => void
+  requestSurpriseTrack: () => void
   setCurrentTime: Dispatch<SetStateAction<number>>
   setCurrentTrack: Dispatch<SetStateAction<Track | null>>
   setIsPlaying: Dispatch<SetStateAction<boolean>>
   setQueue: Dispatch<SetStateAction<Track[]>>
+  surpriseRequestId: number
 }
 
 type SlopifySearchContextValue = {

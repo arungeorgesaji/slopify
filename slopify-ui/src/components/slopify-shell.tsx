@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Outlet, useNavigate, useRouterState } from "@tanstack/react-router"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -14,6 +14,9 @@ export function SlopifyShell() {
   const [currentTrack, setCurrentTrack] = useState<Track | null>(null)
   const [currentTime, setCurrentTime] = useState(0)
   const [isPlaying, setIsPlaying] = useState(false)
+  const [pauseRequestId, setPauseRequestId] = useState(0)
+  const [playRequestId, setPlayRequestId] = useState(0)
+  const [surpriseRequestId, setSurpriseRequestId] = useState(0)
   const [queue, setQueue] = useState<Track[]>([])
   const desktopSearchRef = useRef<HTMLInputElement | null>(null)
   const mobileSearchRef = useRef<HTMLInputElement | null>(null)
@@ -23,39 +26,85 @@ export function SlopifyShell() {
   })
   const isIntroPage = pathname === "/"
   const isCreatePage = pathname.startsWith("/create")
+  const requestPlayTrack = useCallback((track: Track) => {
+    setCurrentTrack(track)
+    setPlayRequestId((requestId) => requestId + 1)
+  }, [])
+  const requestPausePlayback = useCallback(() => {
+    setPauseRequestId((requestId) => requestId + 1)
+  }, [])
+  const requestSurpriseTrack = useCallback(() => {
+    setSurpriseRequestId((requestId) => requestId + 1)
+  }, [])
   const playbackValue = useMemo(
     () => ({
       currentTime,
       currentTrack,
       isPlaying,
+      pauseRequestId,
+      playRequestId,
       queue,
+      requestPausePlayback,
+      requestPlayTrack,
+      requestSurpriseTrack,
       setCurrentTime,
       setCurrentTrack,
       setIsPlaying,
       setQueue,
+      surpriseRequestId,
     }),
-    [currentTime, currentTrack, isPlaying, queue]
+    [
+      currentTime,
+      currentTrack,
+      isPlaying,
+      pauseRequestId,
+      playRequestId,
+      queue,
+      requestPausePlayback,
+      requestPlayTrack,
+      requestSurpriseTrack,
+      surpriseRequestId,
+    ]
   )
   const searchValue = useMemo(() => ({ search, setSearch }), [search])
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault()
+
+        const searchInput =
+          window.innerWidth < 640
+            ? mobileSearchRef.current
+            : desktopSearchRef.current
+
+        searchInput?.focus()
+        searchInput?.select()
+        return
+      }
+
       if (
-        !(event.metaKey || event.ctrlKey) ||
-        event.key.toLowerCase() !== "k"
+        event.code !== "Space" ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.altKey ||
+        isInteractiveKeyboardTarget(event.target)
       ) {
         return
       }
 
       event.preventDefault()
 
-      const searchInput =
-        window.innerWidth < 640
-          ? mobileSearchRef.current
-          : desktopSearchRef.current
+      if (isPlaying) {
+        requestPausePlayback()
+        return
+      }
 
-      searchInput?.focus()
-      searchInput?.select()
+      const nextTrack = currentTrack ?? queue[0]
+
+      if (nextTrack) {
+        requestPlayTrack(nextTrack)
+      }
     }
 
     window.addEventListener("keydown", handleKeyDown)
@@ -63,7 +112,7 @@ export function SlopifyShell() {
     return () => {
       window.removeEventListener("keydown", handleKeyDown)
     }
-  }, [])
+  }, [currentTrack, isPlaying, queue, requestPausePlayback, requestPlayTrack])
 
   if (isIntroPage) {
     return <Outlet />
@@ -118,6 +167,10 @@ export function SlopifyShell() {
                 <Button
                   variant="secondary"
                   className="h-10 rounded-md px-3 text-xs tracking-wide uppercase sm:px-5 sm:text-sm"
+                  onClick={() => {
+                    navigate({ to: "/app" })
+                    requestSurpriseTrack()
+                  }}
                 >
                   Surprise Me
                 </Button>
@@ -149,5 +202,21 @@ export function SlopifyShell() {
         </div>
       </SlopifySearchContext.Provider>
     </SlopifyPlaybackContext.Provider>
+  )
+}
+
+function isInteractiveKeyboardTarget(target: EventTarget | null) {
+  if (!(target instanceof HTMLElement)) {
+    return false
+  }
+
+  const tagName = target.tagName.toLowerCase()
+
+  return (
+    tagName === "input" ||
+    tagName === "textarea" ||
+    tagName === "select" ||
+    tagName === "button" ||
+    target.isContentEditable
   )
 }

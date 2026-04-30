@@ -1,21 +1,13 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { ArrowLeft, Play } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
+import { ArrowLeft, Pause, Play } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Separator } from "@/components/ui/separator"
 import {
   useSlopifyPlayback,
   useSlopifySearch,
 } from "@/components/slopify-app-context"
 import { fetchTracks, type Track } from "@/lib/tracks"
 
-const MEDIA_EQUALIZER_BARS = Array.from({ length: 14 }, (_, index) => ({
-  id: index,
-  animationDelay: `${index * 0.05}s`,
-  height: `${18 + (index % 7) * 10}px`,
-}))
 const EMPTY_EQUALIZER_BARS = Array.from({ length: 16 }, (_, index) => ({
   id: index,
   animationDelay: `${index * 0.05}s`,
@@ -24,13 +16,21 @@ const EMPTY_EQUALIZER_BARS = Array.from({ length: 16 }, (_, index) => ({
 const SKELETON_ROWS = Array.from({ length: 6 }, (_, index) => index)
 
 export function HomePage() {
-  const { currentTime, currentTrack, isPlaying, setCurrentTrack, setQueue } =
-    useSlopifyPlayback()
+  const {
+    currentTime,
+    currentTrack,
+    isPlaying,
+    requestPausePlayback,
+    requestPlayTrack,
+    setCurrentTrack,
+    setQueue,
+    surpriseRequestId,
+  } = useSlopifyPlayback()
   const { search } = useSlopifySearch()
   const deferredSearch = useDeferredValue(search)
-  const [activeFilter, setActiveFilter] = useState<string | null>(null)
   const [selectedTrackId, setSelectedTrackId] = useState<string | null>(null)
   const previousCurrentTrackIdRef = useRef<string | null>(null)
+  const handledSurpriseRequestIdRef = useRef(0)
   const videoRef = useRef<HTMLVideoElement | null>(null)
 
   const { data: tracks = [], isLoading } = useQuery({
@@ -52,7 +52,23 @@ export function HomePage() {
 
   useEffect(() => {
     setQueue(tracks)
-  }, [setQueue, tracks])
+
+    if (currentTrack || tracks.length === 0) {
+      return
+    }
+
+    const initialTrack = tracks[0]
+
+    if (!initialTrack) {
+      return
+    }
+
+    const selectionTimer = window.setTimeout(() => {
+      setCurrentTrack(initialTrack)
+    }, 0)
+
+    return () => window.clearTimeout(selectionTimer)
+  }, [currentTrack, setCurrentTrack, setQueue, tracks])
 
   useEffect(() => {
     const previousCurrentTrackId = previousCurrentTrackIdRef.current
@@ -80,6 +96,9 @@ export function HomePage() {
 
     return tracks.find((track) => track.id === selectedTrackId) ?? null
   }, [currentTrack, selectedTrackId, tracks])
+  const isSelectedTrackPlaying = Boolean(
+    selectedTrack && currentTrack?.id === selectedTrack.id && isPlaying
+  )
 
   const shouldShowSelectedTrackVideo = Boolean(
     selectedTrack &&
@@ -102,94 +121,107 @@ export function HomePage() {
       return
     }
 
-    if (Math.abs(video.currentTime - currentTime) > 0.35) {
-      video.currentTime = currentTime
-    }
-
     void video.play().catch(() => {
       return
     })
+  }, [shouldShowSelectedTrackVideo])
+
+  useEffect(() => {
+    const video = videoRef.current
+
+    if (!video || !shouldShowSelectedTrackVideo) {
+      return
+    }
+
+    if (Math.abs(video.currentTime - currentTime) > 0.35) {
+      video.currentTime = currentTime
+    }
   }, [currentTime, shouldShowSelectedTrackVideo])
 
   const visibleTracks = useMemo(() => {
     const normalizedSearch = deferredSearch.trim().toLowerCase()
     return tracks.filter((track) => {
-      const matchesSearch =
+      return (
         normalizedSearch.length === 0 ||
         track.title.toLowerCase().includes(normalizedSearch)
-      const matchesFilter =
-        activeFilter === null ||
-        track.vibe.toLowerCase() === activeFilter.toLowerCase()
-
-      return matchesSearch && matchesFilter
+      )
     })
-  }, [activeFilter, deferredSearch, tracks])
+  }, [deferredSearch, tracks])
 
-  const availableFilters = useMemo(() => {
-    return Array.from(new Set(tracks.map((track) => track.vibe))).filter(
-      (filter) => filter.length > 0 && filter !== "unknown"
-    )
-  }, [tracks])
+  useEffect(() => {
+    if (surpriseRequestId === handledSurpriseRequestIdRef.current) {
+      return
+    }
+
+    const candidates = visibleTracks.length > 0 ? visibleTracks : tracks
+
+    if (candidates.length === 0) {
+      return
+    }
+
+    handledSurpriseRequestIdRef.current = surpriseRequestId
+
+    const nextTrack = candidates[Math.floor(Math.random() * candidates.length)]
+
+    if (!nextTrack) {
+      return
+    }
+
+    const surpriseTimer = window.setTimeout(() => {
+      setSelectedTrackId(nextTrack.id)
+      requestPlayTrack(nextTrack)
+    }, 0)
+
+    return () => window.clearTimeout(surpriseTimer)
+  }, [requestPlayTrack, surpriseRequestId, tracks, visibleTracks])
 
   return (
     <section className={selectedTrack ? "" : "space-y-6"}>
       {selectedTrack ? (
-        <div className="-mx-4 -mb-56 overflow-y-auto border-y border-border bg-background/78 shadow-[inset_0_1px_0_rgba(238,244,237,0.05)] sm:-mx-6 lg:-mx-8 lg:h-[calc(100svh-21rem)] lg:min-h-[580px] lg:overflow-hidden">
+        <div className="-mx-4 -mb-56 overflow-y-auto border-y border-border bg-background/78 shadow-[inset_0_1px_0_rgba(238,244,237,0.05)] sm:-mx-6 lg:-mx-8 lg:h-[calc(100svh-15rem)] lg:min-h-[580px] lg:overflow-hidden">
           <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 sm:px-6 lg:h-full lg:px-8">
-            <div className="hud-panel overflow-hidden rounded-[5px]">
-              <div className="relative z-10 flex flex-col gap-3 px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-4">
-                <div className="flex min-w-0 items-center gap-3">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="size-9 rounded-[4px]"
-                    onClick={() => setSelectedTrackId(null)}
-                  >
-                    <ArrowLeft className="size-4" />
-                  </Button>
-                  <div className="min-w-0">
-                    <p className="terminal-label">now playing</p>
-                    <h2 className="truncate text-xl font-black tracking-[-0.03em] text-foreground sm:text-2xl">
-                      {selectedTrack.title}
-                    </h2>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-                  <Badge variant="outline" className="rounded-[3px] px-3 py-1">
-                    {selectedTrack.vibe}
-                  </Badge>
-                  <Badge variant="outline" className="rounded-[3px] px-3 py-1">
-                    {selectedTrack.duration}
-                  </Badge>
-                  {selectedTrack.variationLabel && (
-                    <Badge
-                      variant="outline"
-                      className="rounded-[3px] px-3 py-1"
-                    >
-                      {selectedTrack.variationLabel}
-                    </Badge>
-                  )}
-                  <Button
-                    className="h-9 rounded-[4px] px-4 font-black tracking-[0.12em] uppercase"
-                    onClick={() => setCurrentTrack(selectedTrack)}
-                  >
-                    <Play className="size-4 translate-x-px" />
-                    Play Track
-                  </Button>
-                </div>
-              </div>
-            </div>
-
             <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(360px,0.95fr)] lg:items-stretch">
               {/* Visualizer Panel */}
               <div className="hud-panel flex min-h-[360px] flex-col justify-between overflow-hidden rounded-[5px] bg-background/45 p-4 shadow-[0_24px_62px_rgba(0,0,0,0.4),0_0_36px_rgba(183,243,91,0.12)] sm:min-h-[420px] lg:min-h-0">
                 <div className="flex items-center justify-between border-b border-border pb-3">
-                  <span className="terminal-label">audio visual module</span>
-                  <span className="flex items-center gap-2 font-mono text-[10px] font-black tracking-[0.18em] text-cyan uppercase">
-                    <span className="status-dot" />
-                    live feed
-                  </span>
+                  <div className="flex min-w-0 items-center gap-3">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-8 rounded-[4px]"
+                      onClick={() => setSelectedTrackId(null)}
+                      aria-label="Back to tracks"
+                    >
+                      <ArrowLeft className="size-4" />
+                    </Button>
+                    <div className="min-w-0">
+                      <span className="terminal-label">audio visual module</span>
+                      <p className="truncate text-sm font-black text-foreground sm:text-base">
+                        {selectedTrack.title}
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    size="icon"
+                    className="size-9 rounded-[4px]"
+                    onClick={() => {
+                      if (isSelectedTrackPlaying) {
+                        requestPausePlayback()
+                        return
+                      }
+
+                      requestPlayTrack(selectedTrack)
+                    }}
+                    aria-label={
+                      isSelectedTrackPlaying ? "Pause track" : "Play track"
+                    }
+                  >
+                    {isSelectedTrackPlaying ? (
+                      <Pause className="size-4" />
+                    ) : (
+                      <Play className="size-4 translate-x-px" />
+                    )}
+                  </Button>
                 </div>
 
                 <div className="relative flex flex-1 items-center justify-center overflow-hidden">
@@ -205,18 +237,6 @@ export function HomePage() {
                         muted
                         playsInline
                       />
-                      <div className="pointer-events-none absolute inset-x-5 bottom-5 flex h-24 items-end justify-center gap-1.5">
-                        {MEDIA_EQUALIZER_BARS.map((bar) => (
-                          <span
-                            key={bar.id}
-                            className="equalizer-bar w-1.5 rounded-sm bg-acid/90 shadow-[0_0_16px_rgba(183,243,91,0.28)]"
-                            style={{
-                              animationDelay: bar.animationDelay,
-                              height: bar.height,
-                            }}
-                          />
-                        ))}
-                      </div>
                     </div>
                   ) : selectedTrack.coverUrl ? (
                     <div className="relative aspect-square w-full max-w-[320px] overflow-hidden rounded-[6px] border border-border bg-muted/30 shadow-[0_24px_80px_rgba(0,0,0,0.45),0_0_36px_rgba(183,243,91,0.14)]">
@@ -225,18 +245,6 @@ export function HomePage() {
                         alt={selectedTrack.title}
                         className="size-full object-cover"
                       />
-                      <div className="pointer-events-none absolute inset-x-5 bottom-5 flex h-24 items-end justify-center gap-1.5">
-                        {MEDIA_EQUALIZER_BARS.map((bar) => (
-                          <span
-                            key={bar.id}
-                            className="equalizer-bar w-1.5 rounded-sm bg-acid/90 shadow-[0_0_16px_rgba(183,243,91,0.28)]"
-                            style={{
-                              animationDelay: bar.animationDelay,
-                              height: bar.height,
-                            }}
-                          />
-                        ))}
-                      </div>
                     </div>
                   ) : (
                     <div
@@ -281,12 +289,11 @@ export function HomePage() {
               <div className="hud-panel flex min-h-[320px] flex-col overflow-hidden rounded-[5px] lg:min-h-0">
                 <div className="flex items-center justify-between gap-3 border-b border-border bg-background/45 px-5 py-3">
                   <div>
-                    <p className="terminal-label">lyric stream</p>
+                    <p className="terminal-label">lyrics</p>
                     <h3 className="text-lg font-black tracking-[-0.02em]">
                       Broadcast transcript
                     </h3>
                   </div>
-                  <span className="slop-stamp">manual scroll</span>
                 </div>
                 <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5">
                   <div className="slop-sheet space-y-6 rounded-[3px] border border-border-strong px-5 py-5 shadow-[0_18px_42px_rgba(0,0,0,0.32),0_0_26px_rgba(183,214,106,0.06)]">
@@ -315,15 +322,10 @@ export function HomePage() {
           <div className="hud-panel overflow-hidden rounded-[4px] px-5 py-5 sm:px-6">
             <div className="relative z-10 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <p className="terminal-label">
-                  generation node / ai sound terminal
-                </p>
+                <p className="terminal-label">music library / generated tracks</p>
                 <h1 className="text-3xl font-black tracking-[-0.03em] text-foreground sm:text-5xl">
-                  Slopify audio console
+                  Slopify track library
                 </h1>
-                <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-                  Tracks generated and stored by the backend music service.
-                </p>
               </div>
               <div className="flex items-center gap-2 rounded-md border border-border bg-background/45 px-3 py-2 font-mono text-xs font-bold tracking-[0.18em] text-muted-foreground uppercase shadow-[inset_0_1px_0_rgba(238,244,237,0.05)]">
                 <span className="status-dot" />
@@ -331,35 +333,6 @@ export function HomePage() {
               </div>
             </div>
           </div>
-
-          <ScrollArea className="w-full whitespace-nowrap">
-            <div className="flex gap-2 pb-2">
-              {availableFilters.map((filter) => {
-                const isActive = filter === activeFilter
-                return (
-                  <button
-                    key={filter}
-                    type="button"
-                    onClick={() =>
-                      setActiveFilter((current) =>
-                        current === filter ? null : filter
-                      )
-                    }
-                    className="cursor-pointer"
-                  >
-                    <Badge
-                      variant={isActive ? "default" : "outline"}
-                      className="h-8 rounded-[3px] px-3.5 font-mono text-xs tracking-wide uppercase sm:text-sm"
-                    >
-                      {filter}
-                    </Badge>
-                  </button>
-                )
-              })}
-            </div>
-          </ScrollArea>
-
-          <Separator />
 
           {isLoading ? (
             <div className="space-y-3">
@@ -372,9 +345,9 @@ export function HomePage() {
             </div>
           ) : (
             <div className="hud-panel overflow-hidden rounded-[4px]">
-              <div className="hidden grid-cols-[minmax(0,1fr)_64px_160px_144px_96px] border-b border-border bg-muted/25 px-6 py-3 font-mono text-xs font-bold tracking-[0.18em] text-muted-foreground uppercase md:grid">
+              <div className="hidden grid-cols-[minmax(0,1fr)_5rem_11rem_11rem_6rem] items-center gap-4 border-b border-border bg-muted/25 px-6 py-3 font-mono text-xs font-bold tracking-[0.18em] text-muted-foreground uppercase md:grid">
                 <span>Output Queue</span>
-                <span>Play</span>
+                <span className="text-center">Play</span>
                 <span>Signal Type</span>
                 <span>Node Time</span>
                 <span className="text-right">Runtime</span>
@@ -382,10 +355,11 @@ export function HomePage() {
               <div className="divide-y divide-border">
                 {visibleTracks.map((track) => {
                   const isCurrentTrack = currentTrack?.id === track.id
+                  const isTrackPlaying = isCurrentTrack && isPlaying
                   return (
                     <div
                       key={track.id}
-                      className={`grid grid-cols-[minmax(0,1fr)_44px] items-center gap-4 px-4 py-3 transition-all hover:bg-acid/10 hover:shadow-[inset_3px_0_0_var(--acid)] md:grid-cols-[minmax(0,1fr)_64px_160px_144px_96px] md:px-6 ${
+                      className={`grid grid-cols-[minmax(0,1fr)_44px] items-center gap-4 px-4 py-3 transition-all hover:bg-acid/10 hover:shadow-[inset_3px_0_0_var(--acid)] md:grid-cols-[minmax(0,1fr)_5rem_11rem_11rem_6rem] md:px-6 ${
                         isCurrentTrack
                           ? "bg-acid/12 shadow-[inset_3px_0_0_var(--acid)]"
                           : ""
@@ -423,15 +397,29 @@ export function HomePage() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => setCurrentTrack(track)}
-                        className="flex size-9 items-center justify-center rounded-[3px] border border-border bg-background text-foreground shadow-sm transition-all hover:bg-acid hover:text-primary-foreground"
+                        onClick={() => {
+                          if (isTrackPlaying) {
+                            requestPausePlayback()
+                            return
+                          }
+
+                          requestPlayTrack(track)
+                        }}
+                        aria-label={
+                          isTrackPlaying ? "Pause track" : "Play track"
+                        }
+                        className="flex size-9 items-center justify-center justify-self-center rounded-[3px] border border-border bg-background text-foreground shadow-sm transition-all hover:bg-acid hover:text-primary-foreground"
                       >
-                        <Play className="size-4 translate-x-px" />
+                        {isTrackPlaying ? (
+                          <Pause className="size-4" />
+                        ) : (
+                          <Play className="size-4 translate-x-px" />
+                        )}
                       </button>
-                      <span className="hidden text-sm text-muted-foreground md:block">
+                      <span className="hidden text-sm text-muted-foreground md:block md:truncate">
                         {track.vibe}
                       </span>
-                      <span className="hidden text-sm text-muted-foreground md:block">
+                      <span className="hidden text-sm text-muted-foreground md:block md:truncate">
                         {track.dateAdded}
                       </span>
                       <span className="hidden text-right text-sm text-muted-foreground md:block">

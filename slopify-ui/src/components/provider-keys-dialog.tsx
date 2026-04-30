@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { KeyRound } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -24,17 +24,19 @@ export function ProviderKeysDialog() {
   const [keys, setKeys] = useState<ProviderKeys>(getStoredProviderKeys)
   const [status, setStatus] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (!open) {
+  const handleOpenChange = (nextOpen: boolean) => {
+    setOpen(nextOpen)
+
+    if (!nextOpen) {
       setKeys(getStoredProviderKeys())
       setStatus(null)
     }
-  }, [open])
+  }
 
   const isConfigured = hasRequiredGenerationKeys(keys)
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger
         render={
           <Button type="button" variant="ghost" className="h-10 rounded-[3px] px-5" />

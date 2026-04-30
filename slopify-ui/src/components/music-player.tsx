@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef, useState } from "react"
+import { memo, useCallback, useEffect, useRef, useState } from "react"
 import { Pause, Play, SkipBack, SkipForward, Volume2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Slider } from "@/components/ui/slider"
@@ -8,6 +8,8 @@ import { refreshTrack } from "@/lib/tracks"
 export const MusicPlayer = memo(function MusicPlayer() {
   const {
     currentTrack,
+    pauseRequestId,
+    playRequestId,
     queue,
     setCurrentTime: setSharedCurrentTime,
     setCurrentTrack,
@@ -15,6 +17,7 @@ export const MusicPlayer = memo(function MusicPlayer() {
     setQueue,
   } = useSlopifyPlayback()
   const audioRef = useRef<HTMLAudioElement | null>(null)
+  const lastSharedTimeUpdateRef = useRef(0)
   const [isPlaying, setIsPlaying] = useState(false)
   const [progress, setProgress] = useState([0])
   const [currentTime, setLocalCurrentTime] = useState(0)
@@ -27,6 +30,7 @@ export const MusicPlayer = memo(function MusicPlayer() {
     audioRef.current?.load()
 
     const resetTimer = window.setTimeout(() => {
+      lastSharedTimeUpdateRef.current = 0
       setIsPlaying(false)
       setProgress([0])
       setLocalCurrentTime(0)
@@ -37,6 +41,43 @@ export const MusicPlayer = memo(function MusicPlayer() {
 
     return () => window.clearTimeout(resetTimer)
   }, [currentAudioUrl, setSharedCurrentTime, setSharedIsPlaying])
+
+  useEffect(() => {
+    if (playRequestId === 0 || !currentTrack?.audioUrl) {
+      return
+    }
+
+    const playTimer = window.setTimeout(() => {
+      if (!audioRef.current) {
+        return
+      }
+
+      void audioRef.current
+        .play()
+        .then(() => {
+          setAudioError(null)
+          setIsPlaying(true)
+          setSharedIsPlaying(true)
+        })
+        .catch(() => {
+          setIsPlaying(false)
+          setSharedIsPlaying(false)
+          setAudioError("Audio failed")
+        })
+    }, 0)
+
+    return () => window.clearTimeout(playTimer)
+  }, [currentTrack?.audioUrl, playRequestId, setSharedIsPlaying])
+
+  useEffect(() => {
+    if (pauseRequestId === 0) {
+      return
+    }
+
+    audioRef.current?.pause()
+    setIsPlaying(false)
+    setSharedIsPlaying(false)
+  }, [pauseRequestId, setSharedIsPlaying])
 
   useEffect(() => {
     if (!audioRef.current) {
@@ -108,6 +149,23 @@ export const MusicPlayer = memo(function MusicPlayer() {
     setVolume(Array.isArray(value) ? [...value] : [value])
   }
 
+  const syncPlaybackPosition = useCallback(() => {
+    if (!audioRef.current || !Number.isFinite(audioRef.current.duration)) {
+      return
+    }
+
+    const nextCurrentTime = audioRef.current.currentTime
+
+    setLocalCurrentTime(nextCurrentTime)
+    setProgress([(nextCurrentTime / audioRef.current.duration) * 100])
+
+    const now = performance.now()
+    if (now - lastSharedTimeUpdateRef.current >= 250) {
+      lastSharedTimeUpdateRef.current = now
+      setSharedCurrentTime(nextCurrentTime)
+    }
+  }, [setSharedCurrentTime])
+
   const handlePlayToggle = () => {
     if (!audioRef.current || !currentTrack?.audioUrl) {
       return
@@ -135,16 +193,18 @@ export const MusicPlayer = memo(function MusicPlayer() {
   }
 
   const handleTimeUpdate = () => {
-    if (!audioRef.current || !Number.isFinite(audioRef.current.duration)) {
+    syncPlaybackPosition()
+  }
+
+  useEffect(() => {
+    if (!isPlaying) {
       return
     }
 
-    const nextCurrentTime = audioRef.current.currentTime
+    const intervalId = window.setInterval(syncPlaybackPosition, 250)
 
-    setLocalCurrentTime(nextCurrentTime)
-    setSharedCurrentTime(nextCurrentTime)
-    setProgress([(nextCurrentTime / audioRef.current.duration) * 100])
-  }
+    return () => window.clearInterval(intervalId)
+  }, [isPlaying, syncPlaybackPosition])
 
   const handleSkip = (direction: -1 | 1) => {
     if (!currentTrack || queue.length === 0) {
@@ -175,26 +235,17 @@ export const MusicPlayer = memo(function MusicPlayer() {
             setSharedIsPlaying(false)
             setLocalCurrentTime(0)
             setSharedCurrentTime(0)
+            setProgress([0])
           }}
+          onLoadedMetadata={syncPlaybackPosition}
           onTimeUpdate={handleTimeUpdate}
         />
       ) : null}
-      <div className="mx-auto grid w-full max-w-7xl grid-cols-[minmax(0,1fr)_auto] gap-3 px-4 py-3 sm:px-6 lg:grid-cols-[1fr_auto_1fr] lg:items-center lg:px-8">
-        <div className="min-w-0 rounded-[3px] border border-border bg-surface/80 px-4 py-3 shadow-[inset_0_1px_0_rgba(238,244,237,0.05)]">
+      <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-2 px-4 py-2 sm:px-6 md:grid-cols-[minmax(260px,420px)_minmax(360px,520px)_minmax(180px,260px)] md:items-center md:justify-center lg:px-8">
+        <div className="flex h-20 min-w-0 items-center rounded-[3px] border border-border bg-surface/80 px-4 shadow-[inset_0_1px_0_rgba(238,244,237,0.05)]">
           <div className="flex items-center gap-3">
             <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-[3px] border border-border bg-muted/45 shadow-inner shadow-black/30">
-              {currentTrack?.videoStatus === "completed" &&
-              currentTrack.videoUrl ? (
-                <video
-                  src={currentTrack.videoUrl}
-                  poster={currentTrack.coverUrl || undefined}
-                  className="size-full object-cover"
-                  autoPlay
-                  muted
-                  loop
-                  playsInline
-                />
-              ) : currentTrack?.coverUrl ? (
+              {currentTrack?.coverUrl ? (
                 <img
                   src={currentTrack.coverUrl}
                   alt={currentTrack.title}
@@ -215,18 +266,17 @@ export const MusicPlayer = memo(function MusicPlayer() {
                 {currentTrack?.title ?? "No track selected"}
               </p>
               {currentTrack?.videoStatus &&
-              currentTrack.videoStatus !== "completed" ? (
+              currentTrack.videoStatus !== "completed" &&
+              currentTrack.videoStatus !== "failed" ? (
                 <p className="font-mono text-[10px] font-bold tracking-[0.14em] text-cyan uppercase">
-                  {currentTrack.videoStatus === "failed"
-                    ? "video unavailable"
-                    : "video rendering"}
+                  video rendering
                 </p>
               ) : null}
             </div>
           </div>
         </div>
 
-        <div className="col-span-2 flex w-full max-w-3xl flex-col items-center gap-2 justify-self-center rounded-[3px] border border-border bg-surface/80 px-4 py-3 shadow-[inset_0_1px_0_rgba(238,244,237,0.06),0_14px_34px_rgba(0,0,0,0.34),0_0_22px_rgba(122,184,176,0.07)] lg:col-span-1 lg:min-w-[28rem]">
+        <div className="flex h-20 min-w-0 flex-col items-center justify-center gap-2 rounded-[3px] border border-border bg-surface/80 px-4 shadow-[inset_0_1px_0_rgba(238,244,237,0.06),0_14px_34px_rgba(0,0,0,0.34),0_0_22px_rgba(122,184,176,0.07)]">
           <div className="flex items-center gap-1">
             <Button
               variant="ghost"
@@ -280,24 +330,9 @@ export const MusicPlayer = memo(function MusicPlayer() {
           ) : null}
         </div>
 
-        <div className="flex items-center gap-3 rounded-[3px] border border-border bg-surface/80 px-3 py-3 shadow-[inset_0_1px_0_rgba(238,244,237,0.05)] lg:justify-self-end lg:px-4">
-          <div
-            className="hidden h-6 items-end gap-0.5 sm:flex"
-            aria-hidden="true"
-          >
-            {[0, 1, 2, 3].map((bar) => (
-              <span
-                key={bar}
-                className="equalizer-bar block w-1 rounded-sm bg-amber"
-                style={{
-                  animationDelay: `${bar * 0.13}s`,
-                  height: `${12 + bar * 3}px`,
-                }}
-              />
-            ))}
-          </div>
+        <div className="flex h-20 items-center justify-center gap-3 rounded-[3px] border border-border bg-surface/80 px-4 shadow-[inset_0_1px_0_rgba(238,244,237,0.05)]">
           <Volume2 className="size-4 shrink-0 text-cyan" />
-          <div className="w-24 sm:w-32">
+          <div className="w-full min-w-28">
             <Slider
               value={volume}
               onValueChange={handleVolumeChange}
