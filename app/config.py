@@ -35,6 +35,10 @@ class Settings(BaseSettings):
         ],
         alias="CORS_ALLOW_ORIGINS",
     )
+    cors_allow_origin_regex: str | None = Field(
+        default=r"^https://([a-zA-Z0-9-]+\.)*vercel\.app$",
+        alias="CORS_ALLOW_ORIGIN_REGEX",
+    )
 
     @field_validator("cors_allow_origins", mode="before")
     @classmethod
@@ -42,6 +46,15 @@ class Settings(BaseSettings):
         if isinstance(value, str):
             return [origin.strip() for origin in value.split(",") if origin.strip()]
         return value
+
+    @field_validator("cors_allow_origin_regex", mode="before")
+    @classmethod
+    def parse_cors_allow_origin_regex(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+
+        cleaned = value.strip()
+        return cleaned or None
 
     model_config = SettingsConfigDict(
         env_file=".env",

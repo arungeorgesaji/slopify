@@ -54,7 +54,10 @@ class OpenAIImageService:
                     prompt,
                     text_service=text_service,
                 ),
-                lyrics=lyrics,
+                lyrics=self._normalize_lyrics(
+                    lyrics,
+                    text_service=text_service,
+                ),
             ),
             "size": IMAGE_SIZE,
             "quality": IMAGE_QUALITY,
@@ -106,8 +109,8 @@ class OpenAIImageService:
 
         if lyrics and lyrics.strip():
             sections.append(
-                "Lyrics excerpt and imagery cues:\n"
-                f"{lyrics.strip()[:2500]}"
+                "Lyrics imagery cues:\n"
+                f"{lyrics.strip()}"
             )
 
         sections.append(
@@ -132,6 +135,33 @@ class OpenAIImageService:
         if text_service is not None:
             try:
                 summarized = text_service.summarize_image_brief(
+                    normalized,
+                    model=IMAGE_BRIEF_SUMMARY_MODEL,
+                )
+                summarized = " ".join(summarized.split()).strip()
+                if summarized:
+                    return summarized[:IMAGE_BRIEF_MAX_LENGTH]
+            except OpenAITextError:
+                pass
+
+        return normalized[:IMAGE_BRIEF_MAX_LENGTH]
+
+    def _normalize_lyrics(
+        self,
+        lyrics: str | None,
+        *,
+        text_service: OpenAITextService | None,
+    ) -> str | None:
+        if not lyrics or not lyrics.strip():
+            return None
+
+        normalized = " ".join(lyrics.split()).strip()
+        if len(normalized) <= IMAGE_BRIEF_MAX_LENGTH:
+            return normalized
+
+        if text_service is not None:
+            try:
+                summarized = text_service.summarize_lyrics_for_image(
                     normalized,
                     model=IMAGE_BRIEF_SUMMARY_MODEL,
                 )
