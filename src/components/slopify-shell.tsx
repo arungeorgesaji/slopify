@@ -123,7 +123,7 @@ export function SlopifyShell() {
       <SlopifyPlaybackContext.Provider value={playbackValue}>
         <SlopifySearchContext.Provider value={searchValue}>
           <div className="min-h-svh bg-transparent">
-            <main className="w-full px-4 pt-6 pb-10 sm:px-6 lg:px-8">
+            <main className="w-full px-4 pt-4 pb-10 sm:px-6 sm:pt-6 lg:px-8">
               <Outlet />
             </main>
           </div>
@@ -137,7 +137,7 @@ export function SlopifyShell() {
       <SlopifySearchContext.Provider value={searchValue}>
         <div className="min-h-svh bg-transparent">
           <header className="fixed inset-x-0 top-0 z-40 border-b border-border bg-background/88 text-foreground shadow-[0_10px_34px_rgba(0,0,0,0.42)] backdrop-blur-md">
-            <div className="mx-auto flex h-20 w-full max-w-7xl items-center gap-4 px-4 sm:px-6 lg:px-8">
+            <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center gap-3 px-4 py-3 sm:h-20 sm:flex-nowrap sm:gap-4 sm:px-6 sm:py-0 lg:px-8">
               <div className="min-w-0 flex-1 sm:flex-none">
                 <p className="terminal-label hidden sm:block">
                   audio core / slop ai
@@ -163,10 +163,10 @@ export function SlopifyShell() {
                   </div>
                 </div>
               </div>
-              <div className="flex items-center gap-2 sm:gap-3">
+              <div className="ml-auto flex shrink-0 items-center gap-2 sm:ml-0 sm:gap-3">
                 <Button
                   variant="secondary"
-                  className="h-10 rounded-md px-3 text-xs tracking-wide uppercase sm:px-5 sm:text-sm"
+                  className="h-10 rounded-md px-3 text-[11px] tracking-wide uppercase sm:px-5 sm:text-sm"
                   onClick={() => {
                     navigate({ to: "/app" })
                     requestSurpriseTrack()
@@ -175,7 +175,7 @@ export function SlopifyShell() {
                   Surprise Me
                 </Button>
                 <Button
-                  className="h-10 rounded-md px-4 text-xs tracking-wide uppercase sm:px-5 sm:text-sm"
+                  className="h-10 rounded-md px-4 text-[11px] tracking-wide uppercase sm:px-5 sm:text-sm"
                   onClick={() => navigate({ to: "/create" })}
                 >
                   Create
@@ -194,7 +194,7 @@ export function SlopifyShell() {
             </div>
           </header>
 
-          <main className="w-full px-4 pt-28 pb-56 sm:px-6 lg:px-8">
+          <main className="w-full px-4 pt-36 pb-80 sm:px-6 sm:pt-28 sm:pb-56 lg:px-8">
             <Outlet />
           </main>
 

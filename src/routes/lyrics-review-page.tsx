@@ -176,8 +176,9 @@ export function LyricsReviewPage() {
   }
 
   return (
-    <section className="relative flex min-h-[calc(100svh-3rem)] items-center justify-center overflow-hidden py-10">
-      <div className="absolute top-0 right-0 z-10 flex gap-2">
+    <section className="relative flex min-h-[calc(100svh-3rem)] items-start justify-center overflow-hidden py-6 sm:items-center sm:py-10">
+      <div className="relative z-10 flex w-full max-w-6xl justify-center px-4 sm:absolute sm:top-0 sm:right-0 sm:justify-end sm:px-0">
+        <div className="flex w-full flex-wrap justify-center gap-2 sm:w-auto sm:justify-end">
         <ProviderKeysDialog />
         <Button
           type="button"
@@ -195,9 +196,10 @@ export function LyricsReviewPage() {
         >
           Library
         </Button>
+        </div>
       </div>
 
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 pt-10">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 pt-4 sm:pt-10">
         <div className="text-center">
           <p className="terminal-label">lyric checkpoint / manual control</p>
           <h1 className="mt-2 text-4xl font-black tracking-[-0.04em] text-foreground sm:text-6xl">
@@ -232,7 +234,7 @@ export function LyricsReviewPage() {
                   setLyrics(event.target.value)
                   setFeedback(null)
                 }}
-                className="max-h-[520px] min-h-[420px] resize-none overflow-y-auto rounded-[3px] border-0 bg-background/35 px-5 py-5 text-base leading-8 shadow-[inset_0_1px_0_rgba(238,244,237,0.04),inset_0_0_28px_rgba(0,0,0,0.24)] focus-visible:ring-0"
+                className="max-h-[520px] min-h-[320px] resize-none overflow-y-auto rounded-[3px] border-0 bg-background/35 px-4 py-4 text-base leading-7 shadow-[inset_0_1px_0_rgba(238,244,237,0.04),inset_0_0_28px_rgba(0,0,0,0.24)] focus-visible:ring-0 sm:min-h-[420px] sm:px-5 sm:py-5 sm:leading-8"
               />
               <div className="flex flex-col gap-3 border-t border-border px-3 pt-3 sm:flex-row sm:items-center sm:justify-end">
                 <Button

@@ -39,7 +39,11 @@ export function ProviderKeysDialog() {
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger
         render={
-          <Button type="button" variant="ghost" className="h-10 rounded-[3px] px-5" />
+          <Button
+            type="button"
+            variant="ghost"
+            className="h-10 flex-1 rounded-[3px] px-4 text-center sm:flex-none sm:px-5"
+          />
         }
       >
         <KeyRound className="size-4" />

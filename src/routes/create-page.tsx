@@ -134,35 +134,33 @@ export function CreatePage() {
   }
 
   return (
-    <section className="relative flex min-h-[calc(100svh-3rem)] items-center justify-center overflow-hidden">
-      <div className="absolute top-0 right-0 z-10">
-        <div className="flex gap-2">
+    <section className="relative min-h-[calc(100svh-3rem)] overflow-x-clip py-4 sm:py-6">
+      <div className="mx-auto flex w-full max-w-4xl flex-col px-4 py-2 sm:px-6 sm:py-4">
+        <div className="mb-4 flex w-full flex-col gap-2 min-[520px]:flex-row sm:mb-8 sm:justify-end">
           <ProviderKeysDialog />
           <Button
             type="button"
             variant="ghost"
-            className="h-10 rounded-[3px] px-5"
+            className="h-10 flex-1 rounded-[3px] px-4 text-center sm:flex-none sm:px-5"
             onClick={() => navigate({ to: "/app" })}
           >
             Library
           </Button>
         </div>
-      </div>
 
-      <div className="relative flex w-full max-w-6xl flex-col items-center justify-center px-4 py-12">
-        <div className="mb-8 text-center">
+        <div className="mb-5 mt-1 text-center sm:mb-8">
           <p className="terminal-label">generation node / prompt uplink</p>
-          <p className="mt-2 text-5xl font-black tracking-[-0.04em] text-foreground drop-shadow-[0_0_18px_rgba(183,214,106,0.16)] sm:text-7xl">
+          <p className="mt-2 text-3xl font-black tracking-[-0.04em] text-foreground drop-shadow-[0_0_18px_rgba(183,214,106,0.16)] min-[420px]:text-4xl sm:text-7xl">
             Slopify
           </p>
         </div>
 
         <form
           onSubmit={handleSubmit}
-          className="grid w-full gap-5"
+          className="grid w-full gap-4 sm:gap-5"
         >
-          <div className="hud-panel overflow-hidden rounded-[6px] p-3">
-            <div className="flex items-center justify-between border-b border-border px-3 pb-3">
+          <div className="hud-panel overflow-hidden rounded-[6px] p-2.5 sm:p-3">
+            <div className="flex flex-col gap-2 border-b border-border px-3 pb-3 min-[420px]:flex-row min-[420px]:items-center min-[420px]:justify-between">
               <span className="terminal-label">audio request input</span>
               <span className="font-mono text-[10px] font-bold tracking-[0.18em] text-cyan uppercase">
                 {prompt.length}/{MAX_PROMPT_LENGTH}
@@ -176,15 +174,15 @@ export function CreatePage() {
                 setFeedback(null)
               }}
               placeholder="Describe your situation, mood, and the kind of music you want."
-              className="max-h-[300px] min-h-[250px] resize-none overflow-y-auto rounded-[3px] border-0 bg-background/35 px-5 py-5 text-lg leading-8 shadow-[inset_0_1px_0_rgba(238,244,237,0.04),inset_0_0_28px_rgba(0,0,0,0.24)] focus-visible:ring-0 sm:text-xl"
+              className="max-h-[300px] min-h-[200px] resize-none overflow-y-auto rounded-[3px] border-0 bg-background/35 px-4 py-4 text-base leading-6 shadow-[inset_0_1px_0_rgba(238,244,237,0.04),inset_0_0_28px_rgba(0,0,0,0.24)] focus-visible:ring-0 sm:min-h-[250px] sm:px-5 sm:py-5 sm:text-xl sm:leading-8"
             />
 
-            <div className="flex flex-col gap-3 border-t border-border px-3 pt-3 sm:flex-row sm:items-center sm:justify-end">
+            <div className="flex flex-col gap-3 border-t border-border px-3 pt-3 min-[560px]:flex-row min-[560px]:items-center min-[560px]:justify-end">
               <Button
                 type="button"
                 variant="ghost"
                 size="lg"
-                className="h-11 rounded-[3px] px-5"
+                className="h-11 rounded-[3px] px-5 text-center whitespace-normal min-[560px]:flex-1 sm:flex-none"
                 onClick={() => void handleEnhance()}
                 disabled={isEnhancing || isSubmitting}
               >
@@ -198,7 +196,7 @@ export function CreatePage() {
               <Button
                 type="submit"
                 size="lg"
-                className="h-11 rounded-[3px] px-7"
+                className="h-11 rounded-[3px] px-7 text-center whitespace-normal min-[560px]:flex-1 sm:flex-none"
                 disabled={isSubmitting || isEnhancing}
               >
                 {isSubmitting ? (
@@ -213,11 +211,11 @@ export function CreatePage() {
             </div>
           </div>
 
-          <div className="hud-panel rounded-[6px] p-4">
+          <div className="hud-panel rounded-[6px] p-3 sm:p-4">
             <div className="border-b border-border pb-3">
               <p className="terminal-label">song options</p>
             </div>
-            <div className="space-y-5 pt-4">
+            <div className="space-y-4 pt-4 sm:space-y-5">
               <OptionGroup
                 label="Vocal direction"
                 value={options.vocalDirection}
@@ -318,13 +316,13 @@ function OptionGroup<T extends string | number>({
       <p className="mb-2 font-mono text-[10px] font-bold tracking-[0.18em] text-muted-foreground uppercase">
         {label}
       </p>
-      <div className="flex flex-wrap gap-2">
+      <div className="grid grid-cols-1 gap-2 min-[420px]:grid-cols-2">
         {options.map((option) => (
           <button
             key={option}
             type="button"
             onClick={() => onChange(option)}
-            className={`rounded-[3px] border px-3 py-2 font-mono text-xs font-bold tracking-[0.06em] uppercase transition-all ${
+            className={`min-w-0 rounded-[3px] border px-3 py-2 text-center font-mono text-xs font-bold tracking-[0.06em] whitespace-normal uppercase transition-all ${
               value === option
                 ? "border-acid/70 bg-acid/15 text-acid shadow-[0_0_18px_rgba(183,243,91,0.12)]"
                 : "border-border bg-background/45 text-muted-foreground hover:border-cyan/60 hover:text-cyan"
