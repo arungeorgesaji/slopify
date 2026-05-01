@@ -1,0 +1,222 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { Outlet, useNavigate, useRouterState } from "@tanstack/react-router"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { MusicPlayer } from "@/components/music-player"
+import {
+  SlopifyPlaybackContext,
+  SlopifySearchContext,
+} from "@/components/slopify-app-context"
+import type { Track } from "@/lib/tracks"
+
+export function SlopifyShell() {
+  const [search, setSearch] = useState("")
+  const [currentTrack, setCurrentTrack] = useState<Track | null>(null)
+  const [currentTime, setCurrentTime] = useState(0)
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [pauseRequestId, setPauseRequestId] = useState(0)
+  const [playRequestId, setPlayRequestId] = useState(0)
+  const [surpriseRequestId, setSurpriseRequestId] = useState(0)
+  const [queue, setQueue] = useState<Track[]>([])
+  const desktopSearchRef = useRef<HTMLInputElement | null>(null)
+  const mobileSearchRef = useRef<HTMLInputElement | null>(null)
+  const navigate = useNavigate()
+  const pathname = useRouterState({
+    select: (state) => state.location.pathname,
+  })
+  const isIntroPage = pathname === "/"
+  const isCreatePage = pathname.startsWith("/create")
+  const requestPlayTrack = useCallback((track: Track) => {
+    setCurrentTrack(track)
+    setPlayRequestId((requestId) => requestId + 1)
+  }, [])
+  const requestPausePlayback = useCallback(() => {
+    setPauseRequestId((requestId) => requestId + 1)
+  }, [])
+  const requestSurpriseTrack = useCallback(() => {
+    setSurpriseRequestId((requestId) => requestId + 1)
+  }, [])
+  const playbackValue = useMemo(
+    () => ({
+      currentTime,
+      currentTrack,
+      isPlaying,
+      pauseRequestId,
+      playRequestId,
+      queue,
+      requestPausePlayback,
+      requestPlayTrack,
+      requestSurpriseTrack,
+      setCurrentTime,
+      setCurrentTrack,
+      setIsPlaying,
+      setQueue,
+      surpriseRequestId,
+    }),
+    [
+      currentTime,
+      currentTrack,
+      isPlaying,
+      pauseRequestId,
+      playRequestId,
+      queue,
+      requestPausePlayback,
+      requestPlayTrack,
+      requestSurpriseTrack,
+      surpriseRequestId,
+    ]
+  )
+  const searchValue = useMemo(() => ({ search, setSearch }), [search])
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault()
+
+        const searchInput =
+          window.innerWidth < 640
+            ? mobileSearchRef.current
+            : desktopSearchRef.current
+
+        searchInput?.focus()
+        searchInput?.select()
+        return
+      }
+
+      if (
+        event.code !== "Space" ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.altKey ||
+        isInteractiveKeyboardTarget(event.target)
+      ) {
+        return
+      }
+
+      event.preventDefault()
+
+      if (isPlaying) {
+        requestPausePlayback()
+        return
+      }
+
+      const nextTrack = currentTrack ?? queue[0]
+
+      if (nextTrack) {
+        requestPlayTrack(nextTrack)
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown)
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown)
+    }
+  }, [currentTrack, isPlaying, queue, requestPausePlayback, requestPlayTrack])
+
+  if (isIntroPage) {
+    return <Outlet />
+  }
+
+  if (isCreatePage) {
+    return (
+      <SlopifyPlaybackContext.Provider value={playbackValue}>
+        <SlopifySearchContext.Provider value={searchValue}>
+          <div className="min-h-svh bg-transparent">
+            <main className="w-full px-4 pt-6 pb-10 sm:px-6 lg:px-8">
+              <Outlet />
+            </main>
+          </div>
+        </SlopifySearchContext.Provider>
+      </SlopifyPlaybackContext.Provider>
+    )
+  }
+
+  return (
+    <SlopifyPlaybackContext.Provider value={playbackValue}>
+      <SlopifySearchContext.Provider value={searchValue}>
+        <div className="min-h-svh bg-transparent">
+          <header className="fixed inset-x-0 top-0 z-40 border-b border-border bg-background/88 text-foreground shadow-[0_10px_34px_rgba(0,0,0,0.42)] backdrop-blur-md">
+            <div className="mx-auto flex h-20 w-full max-w-7xl items-center gap-4 px-4 sm:px-6 lg:px-8">
+              <div className="min-w-0 flex-1 sm:flex-none">
+                <p className="terminal-label hidden sm:block">
+                  audio core / slop ai
+                </p>
+                <div className="text-2xl font-black tracking-[-0.03em] text-foreground drop-shadow-[0_0_18px_rgba(183,214,106,0.18)] sm:text-3xl">
+                  Slopify
+                </div>
+              </div>
+              <div className="hidden min-w-0 flex-1 sm:block">
+                <div className="mx-auto w-full max-w-2xl">
+                  <div className="relative">
+                    <Input
+                      ref={desktopSearchRef}
+                      aria-label="Search tracks"
+                      value={search}
+                      onChange={(event) => setSearch(event.target.value)}
+                      placeholder="Search tracks, signals, synthetic hooks"
+                      className="h-14 rounded-[3px] border-border bg-surface/90 px-5 pr-20 font-mono text-base text-foreground placeholder:text-muted-foreground"
+                    />
+                    <span className="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2 rounded-[2px] border border-cyan/35 bg-background/80 px-2 py-1 font-mono text-[10px] font-bold text-cyan">
+                      CTRL K
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 sm:gap-3">
+                <Button
+                  variant="secondary"
+                  className="h-10 rounded-md px-3 text-xs tracking-wide uppercase sm:px-5 sm:text-sm"
+                  onClick={() => {
+                    navigate({ to: "/app" })
+                    requestSurpriseTrack()
+                  }}
+                >
+                  Surprise Me
+                </Button>
+                <Button
+                  className="h-10 rounded-md px-4 text-xs tracking-wide uppercase sm:px-5 sm:text-sm"
+                  onClick={() => navigate({ to: "/create" })}
+                >
+                  Create
+                </Button>
+              </div>
+            </div>
+            <div className="border-t border-border px-4 py-3 sm:hidden">
+              <Input
+                ref={mobileSearchRef}
+                aria-label="Search tracks"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search slop tracks"
+                className="h-10 rounded-[3px] border-border bg-surface/90 px-4 font-mono"
+              />
+            </div>
+          </header>
+
+          <main className="w-full px-4 pt-28 pb-56 sm:px-6 lg:px-8">
+            <Outlet />
+          </main>
+
+          <MusicPlayer />
+        </div>
+      </SlopifySearchContext.Provider>
+    </SlopifyPlaybackContext.Provider>
+  )
+}
+
+function isInteractiveKeyboardTarget(target: EventTarget | null) {
+  if (!(target instanceof HTMLElement)) {
+    return false
+  }
+
+  const tagName = target.tagName.toLowerCase()
+
+  return (
+    tagName === "input" ||
+    tagName === "textarea" ||
+    tagName === "select" ||
+    tagName === "button" ||
+    target.isContentEditable
+  )
+}
