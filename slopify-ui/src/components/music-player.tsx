@@ -242,7 +242,7 @@ export const MusicPlayer = memo(function MusicPlayer() {
         />
       ) : null}
       <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-2 px-4 py-2 sm:px-6 md:grid-cols-[minmax(260px,420px)_minmax(360px,520px)_minmax(180px,260px)] md:items-center md:justify-center lg:px-8">
-        <div className="flex h-20 min-w-0 items-center rounded-[3px] border border-border bg-surface/80 px-4 shadow-[inset_0_1px_0_rgba(238,244,237,0.05)]">
+        <div className="flex min-w-0 items-center rounded-[3px] border border-border bg-surface/80 px-4 py-3 shadow-[inset_0_1px_0_rgba(238,244,237,0.05)] sm:h-20 sm:py-0">
           <div className="flex items-center gap-3">
             <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-[3px] border border-border bg-muted/45 shadow-inner shadow-black/30">
               {currentTrack?.coverUrl ? (
@@ -276,8 +276,8 @@ export const MusicPlayer = memo(function MusicPlayer() {
           </div>
         </div>
 
-        <div className="flex h-20 min-w-0 flex-col items-center justify-center gap-2 rounded-[3px] border border-border bg-surface/80 px-4 shadow-[inset_0_1px_0_rgba(238,244,237,0.06),0_14px_34px_rgba(0,0,0,0.34),0_0_22px_rgba(122,184,176,0.07)]">
-          <div className="flex items-center gap-1">
+        <div className="flex min-w-0 flex-col items-center justify-center gap-2 rounded-[3px] border border-border bg-surface/80 px-4 py-3 shadow-[inset_0_1px_0_rgba(238,244,237,0.06),0_14px_34px_rgba(0,0,0,0.34),0_0_22px_rgba(122,184,176,0.07)] sm:h-20 sm:py-0">
+          <div className="flex flex-wrap items-center justify-center gap-1">
             <Button
               variant="ghost"
               size="icon"
@@ -313,15 +313,15 @@ export const MusicPlayer = memo(function MusicPlayer() {
             </Button>
           </div>
 
-          <div className="flex w-full items-center gap-3 font-mono text-[11px] text-muted-foreground">
-            <span>{formatProgressTime(currentTime)}</span>
+          <div className="flex w-full items-center gap-2 font-mono text-[10px] text-muted-foreground sm:gap-3 sm:text-[11px]">
+            <span className="shrink-0">{formatProgressTime(currentTime)}</span>
             <Slider
               value={progress}
               onValueChange={handleProgressChange}
               aria-label="Track progress"
               className="[&_[data-slot=slider-range]]:bg-acid [&_[data-slot=slider-thumb]]:border-acid/80 [&_[data-slot=slider-thumb]]:bg-background [&_[data-slot=slider-thumb]]:shadow-[0_0_14px_rgba(183,214,106,0.3)] [&_[data-slot=slider-track]]:bg-acid/16"
             />
-            <span>{currentTrack?.duration ?? "--"}</span>
+            <span className="shrink-0">{currentTrack?.duration ?? "--"}</span>
           </div>
           {audioError ? (
             <p className="font-mono text-[10px] font-bold tracking-[0.18em] text-destructive uppercase">
@@ -330,7 +330,7 @@ export const MusicPlayer = memo(function MusicPlayer() {
           ) : null}
         </div>
 
-        <div className="flex h-20 items-center justify-center gap-3 rounded-[3px] border border-border bg-surface/80 px-4 shadow-[inset_0_1px_0_rgba(238,244,237,0.05)]">
+        <div className="flex items-center justify-center gap-3 rounded-[3px] border border-border bg-surface/80 px-4 py-3 shadow-[inset_0_1px_0_rgba(238,244,237,0.05)] sm:h-20 sm:py-0">
           <Volume2 className="size-4 shrink-0 text-cyan" />
           <div className="w-full min-w-28">
             <Slider

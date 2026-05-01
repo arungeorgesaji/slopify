@@ -99,7 +99,8 @@ export function CreateReviewPage() {
 
   return (
     <section className="relative min-h-[calc(100svh-3rem)] overflow-hidden py-10">
-      <div className="absolute top-0 right-0 z-10 flex gap-2">
+      <div className="relative z-10 mx-auto flex w-full max-w-7xl justify-center px-4 sm:absolute sm:top-0 sm:right-0 sm:justify-end sm:px-0">
+        <div className="flex w-full flex-wrap justify-center gap-2 sm:w-auto sm:justify-end">
         <ProviderKeysDialog />
         <Button
           type="button"
@@ -117,9 +118,10 @@ export function CreateReviewPage() {
         >
           Library
         </Button>
+        </div>
       </div>
 
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 pt-10">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 pt-4 sm:pt-10">
         <div className="text-center">
           <p className="terminal-label">generation review / choose output</p>
           <h1 className="mt-2 text-4xl font-black tracking-[-0.04em] text-foreground sm:text-6xl">

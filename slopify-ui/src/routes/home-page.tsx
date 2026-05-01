@@ -178,11 +178,11 @@ export function HomePage() {
   return (
     <section className={selectedTrack ? "" : "space-y-6"}>
       {selectedTrack ? (
-        <div className="-mx-4 -mb-56 overflow-y-auto border-y border-border bg-background/78 shadow-[inset_0_1px_0_rgba(238,244,237,0.05)] sm:-mx-6 lg:-mx-8 lg:h-[calc(100svh-15rem)] lg:min-h-[580px] lg:overflow-hidden">
-          <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 sm:px-6 lg:h-full lg:px-8">
+        <div className="-mx-4 -mb-80 overflow-x-hidden overflow-y-auto border-y border-border bg-background/78 shadow-[inset_0_1px_0_rgba(238,244,237,0.05)] sm:-mx-6 sm:-mb-56 lg:-mx-8 lg:h-[calc(100svh-15rem)] lg:min-h-[580px] lg:overflow-hidden">
+          <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-4 sm:px-6 lg:h-full lg:px-8">
             <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(360px,0.95fr)] lg:items-stretch">
               {/* Visualizer Panel */}
-              <div className="hud-panel flex min-h-[360px] flex-col justify-between overflow-hidden rounded-[5px] bg-background/45 p-4 shadow-[0_24px_62px_rgba(0,0,0,0.4),0_0_36px_rgba(183,243,91,0.12)] sm:min-h-[420px] lg:min-h-0">
+              <div className="hud-panel flex min-h-[300px] flex-col justify-between overflow-hidden rounded-[5px] bg-background/45 p-4 shadow-[0_24px_62px_rgba(0,0,0,0.4),0_0_36px_rgba(183,243,91,0.12)] sm:min-h-[420px] lg:min-h-0">
                 <div className="flex items-center justify-between border-b border-border pb-3">
                   <div className="flex min-w-0 items-center gap-3">
                     <Button
@@ -228,7 +228,7 @@ export function HomePage() {
                   <div className="absolute inset-5 rounded-[4px] border border-acid/18 bg-[radial-gradient(circle_at_center,_rgba(183,243,91,0.12),_transparent_42%)] shadow-[inset_0_0_68px_rgba(183,243,91,0.08)]" />
                   <div className="absolute inset-x-8 top-1/2 h-px bg-gradient-to-r from-transparent via-cyan/50 to-transparent" />
                   {shouldShowSelectedTrackVideo ? (
-                    <div className="relative aspect-square w-full max-w-[320px] overflow-hidden rounded-[6px] border border-border bg-muted/30 shadow-[0_24px_80px_rgba(0,0,0,0.45),0_0_36px_rgba(183,243,91,0.14)]">
+                    <div className="relative aspect-square w-full max-w-[240px] overflow-hidden rounded-[6px] border border-border bg-muted/30 shadow-[0_24px_80px_rgba(0,0,0,0.45),0_0_36px_rgba(183,243,91,0.14)] sm:max-w-[320px]">
                       <video
                         ref={videoRef}
                         src={selectedTrack.videoUrl}
@@ -239,7 +239,7 @@ export function HomePage() {
                       />
                     </div>
                   ) : selectedTrack.coverUrl ? (
-                    <div className="relative aspect-square w-full max-w-[320px] overflow-hidden rounded-[6px] border border-border bg-muted/30 shadow-[0_24px_80px_rgba(0,0,0,0.45),0_0_36px_rgba(183,243,91,0.14)]">
+                    <div className="relative aspect-square w-full max-w-[240px] overflow-hidden rounded-[6px] border border-border bg-muted/30 shadow-[0_24px_80px_rgba(0,0,0,0.45),0_0_36px_rgba(183,243,91,0.14)] sm:max-w-[320px]">
                       <img
                         src={selectedTrack.coverUrl}
                         alt={selectedTrack.title}
@@ -286,7 +286,7 @@ export function HomePage() {
               </div>
 
               {/* Lyrics Panel */}
-              <div className="hud-panel flex min-h-[320px] flex-col overflow-hidden rounded-[5px] lg:min-h-0">
+              <div className="hud-panel flex min-h-[280px] flex-col overflow-hidden rounded-[5px] lg:min-h-0">
                 <div className="flex items-center justify-between gap-3 border-b border-border bg-background/45 px-5 py-3">
                   <div>
                     <p className="terminal-label">lyrics</p>
@@ -296,7 +296,7 @@ export function HomePage() {
                   </div>
                 </div>
                 <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5">
-                  <div className="slop-sheet space-y-6 rounded-[3px] border border-border-strong px-5 py-5 shadow-[0_18px_42px_rgba(0,0,0,0.32),0_0_26px_rgba(183,214,106,0.06)]">
+                  <div className="slop-sheet space-y-6 rounded-[3px] border border-border-strong px-4 py-4 shadow-[0_18px_42px_rgba(0,0,0,0.32),0_0_26px_rgba(183,214,106,0.06)] sm:px-5 sm:py-5">
                     {(selectedTrack.lyrics ?? selectedTrack.prompt ?? "")
                       .split("\n\n")
                       .map((section, idx) => (
@@ -304,7 +304,7 @@ export function HomePage() {
                           {section.split("\n").map((line, lIdx) => (
                             <p
                               key={lIdx}
-                              className="max-w-3xl text-base leading-8 font-semibold text-foreground sm:text-lg"
+                              className="max-w-3xl text-base leading-7 font-semibold text-foreground sm:text-lg sm:leading-8"
                             >
                               {line}
                             </p>
@@ -323,7 +323,7 @@ export function HomePage() {
             <div className="relative z-10 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <p className="terminal-label">music library / generated tracks</p>
-                <h1 className="text-3xl font-black tracking-[-0.03em] text-foreground sm:text-5xl">
+                <h1 className="text-2xl font-black tracking-[-0.03em] text-foreground sm:text-5xl">
                   Slopify track library
                 </h1>
               </div>

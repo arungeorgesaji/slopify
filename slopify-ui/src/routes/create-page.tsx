@@ -134,9 +134,9 @@ export function CreatePage() {
   }
 
   return (
-    <section className="relative flex min-h-[calc(100svh-3rem)] items-center justify-center overflow-hidden">
-      <div className="absolute top-0 right-0 z-10">
-        <div className="flex gap-2">
+    <section className="relative flex min-h-[calc(100svh-3rem)] items-start justify-center overflow-hidden py-6 sm:items-center">
+      <div className="relative z-10 flex w-full max-w-6xl justify-center px-4 sm:absolute sm:top-0 sm:right-0 sm:justify-end sm:px-0">
+        <div className="flex w-full flex-wrap justify-center gap-2 sm:w-auto sm:justify-end">
           <ProviderKeysDialog />
           <Button
             type="button"
@@ -149,10 +149,10 @@ export function CreatePage() {
         </div>
       </div>
 
-      <div className="relative flex w-full max-w-6xl flex-col items-center justify-center px-4 py-12">
-        <div className="mb-8 text-center">
+      <div className="relative flex w-full max-w-6xl flex-col items-center justify-center px-4 py-8 sm:py-12">
+        <div className="mb-6 mt-4 text-center sm:mb-8 sm:mt-0">
           <p className="terminal-label">generation node / prompt uplink</p>
-          <p className="mt-2 text-5xl font-black tracking-[-0.04em] text-foreground drop-shadow-[0_0_18px_rgba(183,214,106,0.16)] sm:text-7xl">
+          <p className="mt-2 text-4xl font-black tracking-[-0.04em] text-foreground drop-shadow-[0_0_18px_rgba(183,214,106,0.16)] sm:text-7xl">
             Slopify
           </p>
         </div>
@@ -176,7 +176,7 @@ export function CreatePage() {
                 setFeedback(null)
               }}
               placeholder="Describe your situation, mood, and the kind of music you want."
-              className="max-h-[300px] min-h-[250px] resize-none overflow-y-auto rounded-[3px] border-0 bg-background/35 px-5 py-5 text-lg leading-8 shadow-[inset_0_1px_0_rgba(238,244,237,0.04),inset_0_0_28px_rgba(0,0,0,0.24)] focus-visible:ring-0 sm:text-xl"
+              className="max-h-[300px] min-h-[220px] resize-none overflow-y-auto rounded-[3px] border-0 bg-background/35 px-4 py-4 text-base leading-7 shadow-[inset_0_1px_0_rgba(238,244,237,0.04),inset_0_0_28px_rgba(0,0,0,0.24)] focus-visible:ring-0 sm:min-h-[250px] sm:px-5 sm:py-5 sm:text-xl sm:leading-8"
             />
 
             <div className="flex flex-col gap-3 border-t border-border px-3 pt-3 sm:flex-row sm:items-center sm:justify-end">
